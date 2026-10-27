@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated
+
+# arquivos de skills do Prisma (não fazem parte do projeto)
+/.agents
+/.claude
+/.cursor
+/.devin

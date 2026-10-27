@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Estoque Web: login e perfis
 
-## Getting Started
+Acrescenta login (e-mail e senha), perfis Administrador/Operador e cadastro de usuários.
 
-First, run the development server:
+## 1. Instalar as duas bibliotecas novas
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install bcryptjs jose
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 2. Copiar os arquivos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copie para dentro da pasta `estoque`, aceitando substituir:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `proxy.ts`  (novo, na raiz, ao lado do `package.json`)
+- `app/`, `components/`, `lib/`
+- `prisma/seed.ts`
 
-## Learn More
+## 3. Acrescentar ao `.env`
 
-To learn more about Next.js, take a look at the following resources:
+```
+SESSION_SECRET="cole-aqui-uma-chave-longa"
+ADMIN_EMAIL="seu@email.com"
+ADMIN_PASSWORD="uma-senha-forte-com-8-ou-mais-caracteres"
+ADMIN_NAME="Seu Nome"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Gere a `SESSION_SECRET` no terminal:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-## Deploy on Vercel
+## 4. Criar a senha do admin e rodar
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx prisma db seed
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Entre em http://localhost:3000 com o e-mail e a senha do `.env`.
+
+## Perfis
+
+- **Administrador:** tudo, inclusive cadastrar produtos e usuários (menu "Usuários").
+- **Operador:** vê o painel e os produtos e lança movimentações.
+
+## Observações
+
+- Esqueceu a senha do admin? Mude `ADMIN_PASSWORD` no `.env` e rode `npx prisma db seed` de novo.
+- Depois de rodar o seed, pode apagar `ADMIN_PASSWORD` do `.env`: só o seed usa.
+- Na Vercel, adicione `SESSION_SECRET` (a mesma ou outra chave) junto com o `DATABASE_URL`.
+  `ADMIN_*` não são necessárias lá.
+- A sessão dura 7 dias. Trocar a `SESSION_SECRET` desconecta todo mundo.
