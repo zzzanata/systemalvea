@@ -13,6 +13,7 @@ import type {
   ProjectDetail,
   ProjectOption,
   ProjectSummary,
+  SupplierOption,
 } from "@/lib/types";
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -73,9 +74,14 @@ export async function getCategories(): Promise<Category[]> {
   return rows.map((c) => ({ id: c.id, name: c.name }));
 }
 
+export async function getSuppliers(): Promise<SupplierOption[]> {
+  const rows = await prisma.supplier.findMany({ orderBy: { name: "asc" } });
+  return rows.map((x) => ({ id: x.id, name: x.name }));
+}
+
 export async function getMovements(limit?: number): Promise<Movement[]> {
   const rows = await prisma.stockMovement.findMany({
-    include: { product: true, user: true },
+    include: { product: true, user: true, supplier: true },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
@@ -88,6 +94,9 @@ export async function getMovements(limit?: number): Promise<Movement[]> {
     quantity: Number(m.quantity),
     reason: m.reason ?? "",
     user: m.user.name,
+    unitCost: m.unitCost === null ? null : Number(m.unitCost),
+    supplier: m.supplier?.name ?? "",
+    invoiceNumber: m.invoiceNumber ?? "",
     createdAt: dateTimeFmt.format(m.createdAt),
   }));
 }

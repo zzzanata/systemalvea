@@ -76,7 +76,7 @@ export default function ProductForm({ categories }: { categories: Category[] }) 
         <Field label="Estoque inicial" hint="Registrado como uma entrada (opcional)">
           <input name="initialStock" inputMode="decimal" defaultValue="0" className={inputCls} />
         </Field>
-        <Field label="Preço de custo (R$)">
+        <Field label="Custo inicial (R$)">
           <input name="costPrice" inputMode="decimal" defaultValue="0" className={inputCls} />
         </Field>
         <Field label="Preço de venda (R$)">

@@ -63,7 +63,7 @@ export default function ProductsTable({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[800px] text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">SKU</th>
@@ -71,6 +71,7 @@ export default function ProductsTable({
               <th className="px-4 py-3 font-medium">Categoria</th>
               <th className="px-4 py-3 text-right font-medium">Saldo</th>
               <th className="px-4 py-3 text-right font-medium">Mínimo</th>
+              <th className="px-4 py-3 text-right font-medium">Custo médio</th>
               <th className="px-4 py-3 text-right font-medium">Venda</th>
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
@@ -87,6 +88,7 @@ export default function ProductsTable({
                 <td className="px-4 py-3 text-right tabular-nums text-slate-500">
                   {p.minStock}
                 </td>
+                <td className="px-4 py-3 text-right tabular-nums text-slate-600">{brl(p.costPrice)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{brl(p.salePrice)}</td>
                 <td className="px-4 py-3">
                   <StatusBadge status={stockStatus(p)} />
@@ -95,7 +97,7 @@ export default function ProductsTable({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   {products.length === 0
                     ? "Nenhum produto cadastrado ainda."
                     : "Nenhum produto encontrado."}

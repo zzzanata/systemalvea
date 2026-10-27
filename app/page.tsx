@@ -266,7 +266,7 @@ export default async function DashboardPage() {
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="Produtos ativos" value={products.length} />
-          <StatCard label="Valor em estoque" value={brl(stockValue)} hint="a preço de custo" />
+          <StatCard label="Valor em estoque" value={brl(stockValue)} hint="a custo médio" />
           <StatCard label="Estoque baixo" value={lowItems.length} tone="warn" />
           <StatCard label="Em falta" value={outItems.length} tone="danger" />
         </div>

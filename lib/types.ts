@@ -77,8 +77,13 @@ export type Movement = {
   quantity: number;
   reason: string;
   user: string;
+  unitCost: number | null;
+  supplier: string;
+  invoiceNumber: string;
   createdAt: string; // já formatado (fuso de São Paulo)
 };
+
+export type SupplierOption = { id: string; name: string };
 
 // ---------- Obras ----------
 

@@ -87,6 +87,7 @@ async function main() {
             userId: admin.id,
             type: "IN",
             quantity: p.stock,
+            unitCost: p.costPrice,
             reason: "Estoque inicial",
           },
         });

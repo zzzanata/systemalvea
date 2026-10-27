@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
+import { parseNumber } from "@/lib/form";
+import { weightedAverage } from "@/lib/stock";
 import type { ActionResult, MovementType, UserActionResult } from "@/lib/types";
 
 // Erro com mensagem segura para mostrar ao usuário.
@@ -74,6 +76,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
             userId: user.id,
             type: "IN",
             quantity: initialStock,
+            unitCost: costPrice,
             reason: "Estoque inicial",
           },
         });
@@ -100,12 +103,19 @@ export async function createMovement(formData: FormData): Promise<ActionResult> 
   const qty = num(formData.get("quantity"));
   const reason = text(formData.get("reason"));
   const note = text(formData.get("note"));
+  const unitCostIn = parseNumber(formData.get("unitCost"));
+  const supplierId = text(formData.get("supplierId"));
+  const newSupplier = text(formData.get("newSupplier"));
+  const invoiceNumber = text(formData.get("invoiceNumber"));
 
   if (!productId) return { error: "Escolha um produto." };
   if (!["IN", "OUT", "ADJUSTMENT"].includes(type)) return { error: "Tipo inválido." };
   if (qty === null || qty === 0) return { error: "Informe uma quantidade válida." };
   if (type !== "ADJUSTMENT" && qty < 0) {
     return { error: "Em entrada e saída a quantidade deve ser positiva." };
+  }
+  if (type === "IN" && (unitCostIn === null || unitCostIn < 0)) {
+    return { error: "Informe o valor unitário pago (use 0 se foi doação)." };
   }
 
   // Quanto o saldo muda: saída diminui; entrada aumenta; ajuste usa o sinal informado.
@@ -115,25 +125,43 @@ export async function createMovement(formData: FormData): Promise<ActionResult> 
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Atualização atômica: uma redução só acontece se houver saldo suficiente.
-      const updated =
-        delta >= 0
-          ? await tx.product.updateMany({
-              where: { id: productId },
-              data: { currentStock: { increment: delta } },
-            })
-          : await tx.product.updateMany({
-              where: { id: productId, currentStock: { gte: -delta } },
-              data: { currentStock: { decrement: -delta } },
-            });
+      // Trava a linha do produto: duas movimentações simultâneas não se atropelam
+      // e o custo médio é sempre calculado sobre o saldo correto.
+      const rows = await tx.$queryRaw<{ currentStock: unknown; costPrice: unknown }[]>`
+        SELECT "currentStock", "costPrice" FROM "Product" WHERE id = ${productId} FOR UPDATE`;
+      if (rows.length === 0) throw new UserError("Produto não encontrado.");
 
-      if (updated.count === 0) {
-        throw new UserError(
-          delta >= 0
-            ? "Produto não encontrado."
-            : "Saldo insuficiente (ou produto não encontrado).",
-        );
+      const stock = Number(rows[0].currentStock);
+      const avg = Number(rows[0].costPrice);
+
+      if (stock + delta < 0) {
+        throw new UserError(`Saldo insuficiente: há apenas ${stock} em estoque.`);
       }
+
+      let newAvg = avg;
+      let movementCost = avg; // saída e ajuste saem pelo custo médio atual
+      let finalSupplierId: string | null = null;
+
+      if (type === "IN") {
+        newAvg = weightedAverage(stock, avg, delta, unitCostIn as number);
+        movementCost = unitCostIn as number;
+
+        if (newSupplier) {
+          const sup = await tx.supplier.upsert({
+            where: { name: newSupplier },
+            update: {},
+            create: { name: newSupplier },
+          });
+          finalSupplierId = sup.id;
+        } else if (supplierId) {
+          finalSupplierId = supplierId;
+        }
+      }
+
+      await tx.product.update({
+        where: { id: productId },
+        data: { currentStock: stock + delta, costPrice: newAvg },
+      });
 
       await tx.stockMovement.create({
         data: {
@@ -143,6 +171,9 @@ export async function createMovement(formData: FormData): Promise<ActionResult> 
           quantity: stored,
           reason: reason || null,
           note: note || null,
+          unitCost: movementCost,
+          supplierId: finalSupplierId,
+          invoiceNumber: type === "IN" ? invoiceNumber || null : null,
         },
       });
     });
