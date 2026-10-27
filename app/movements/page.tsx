@@ -21,7 +21,7 @@ export default async function MovementsPage() {
         </div>
         <Link
           href="/movements/new"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          className="rounded-lg bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
         >
           Nova movimentação
         </Link>

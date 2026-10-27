@@ -20,7 +20,7 @@ const typeOptions: { value: MovementType; label: string }[] = [
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 export default function MovementForm({ products }: { products: ProductOption[] }) {
   const [type, setType] = useState<MovementType>("IN");
@@ -159,7 +159,7 @@ export default function MovementForm({ products }: { products: ProductOption[] }
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+          className="rounded-lg bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
         >
           {pending ? "Registrando..." : "Registrar"}
         </button>

@@ -1,27 +1,26 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
- 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Paleta da GTG Energia, tirada da logo:
+   azul-marinho #000a73 (brand-900) e amarelo #ffb500 (sun-400). */
+@theme {
+  --color-brand-50: #f2f3f8;
+  --color-brand-100: #e6e6f1;
+  --color-brand-200: #d1d3e6;
+  --color-brand-300: #b2b6d5;
+  --color-brand-500: #7378b2;
+  --color-brand-700: #404796;
+  --color-brand-800: #1f2784;
+  --color-brand-900: #000a73;
+  --color-brand-950: #00063f;
+
+  --color-sun-50: #fff8e6;
+  --color-sun-100: #fff0cc;
+  --color-sun-200: #ffe199;
+  --color-sun-400: #ffb500;
+  --color-sun-500: #e6a200;
+  --color-sun-700: #8a5f00;
 }
 
- 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html {
+  color-scheme: light;
 }

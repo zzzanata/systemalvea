@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { createUser } from "@/app/actions";
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 export default function UserForm() {
   const formRef = useRef<HTMLFormElement>(null);
@@ -78,7 +78,7 @@ export default function UserForm() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+          className="rounded-lg bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
         >
           {pending ? "Criando..." : "Criar usuário"}
         </button>

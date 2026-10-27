@@ -7,6 +7,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------- Estoque ----------
+
 enum Role {
   ADMIN
   OPERATOR
@@ -26,7 +28,8 @@ model User {
   role         Role     @default(OPERATOR)
   createdAt    DateTime @default(now())
 
-  movements StockMovement[]
+  movements    StockMovement[]
+  tasksUpdated Task[]          @relation("TaskUpdatedBy")
 }
 
 model Category {
@@ -72,4 +75,117 @@ model StockMovement {
 
   @@index([productId, createdAt])
   @@index([userId])
+}
+
+// ---------- Obras (usinas) ----------
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  DONE
+}
+
+enum TaskStatus {
+  TODO
+  DOING
+  DONE
+}
+
+enum MemberRole {
+  LEAD
+  MEMBER
+}
+
+// Uma obra / usina.
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  location    String?
+  powerKwp    Decimal?      @db.Decimal(12, 2)
+  startDate   DateTime?
+  expectedEnd DateTime?
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+
+  tasks    Task[]
+  team     TeamMember[]
+  entries  FinanceEntry[]
+  invoices Invoice[]
+}
+
+// Item do checklist da obra. A etapa é só um nome de grupo (stage).
+model Task {
+  id          String     @id @default(cuid())
+  projectId   String
+  stage       String
+  title       String
+  status      TaskStatus @default(TODO)
+  position    Int
+  updatedAt   DateTime   @updatedAt
+  updatedById String?
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation("TaskUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId, position])
+}
+
+// Quem trabalha na obra (não precisa ter login no sistema).
+model TeamMember {
+  id        String     @id @default(cuid())
+  projectId String
+  name      String
+  role      MemberRole @default(MEMBER)
+  jobTitle  String?
+  createdAt DateTime   @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// ---------- Financeiro ----------
+
+enum EntryType {
+  REVENUE
+  COST
+}
+
+enum InvoiceStatus {
+  PENDING
+  ISSUED
+  CANCELED
+}
+
+// Faturamento (REVENUE) ou custo (COST).
+model FinanceEntry {
+  id          String    @id @default(cuid())
+  projectId   String?
+  type        EntryType
+  amount      Decimal   @db.Decimal(14, 2)
+  date        DateTime
+  description String
+  createdAt   DateTime  @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([projectId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  projectId   String?
+  number      String?
+  description String
+  amount      Decimal       @db.Decimal(14, 2)
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime?
+  issuedAt    DateTime?
+  createdAt   DateTime      @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([status, dueDate])
+  @@index([projectId])
 }
