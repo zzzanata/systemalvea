@@ -19,6 +19,24 @@
   --color-sun-400: #ffb500;
   --color-sun-500: #e6a200;
   --color-sun-700: #8a5f00;
+
+  /* Loading de troca de página: aparece só se a página demorar um instante (~0,12 s). */
+  --animate-gtg-fade: gtg-fade 0.2s ease-out 0.12s both;
+  --animate-gtg-pulse: gtg-pulse 1.1s ease-in-out infinite;
+  --animate-gtg-bar: gtg-bar 1.1s ease-in-out infinite;
+
+  @keyframes gtg-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes gtg-pulse {
+    0%, 100% { transform: scale(0.94); opacity: 0.65; }
+    50% { transform: scale(1.04); opacity: 1; }
+  }
+  @keyframes gtg-bar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
 }
 
 html {
