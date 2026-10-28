@@ -28,7 +28,7 @@ export default function StatCard({
           : "text-lg sm:text-xl";
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
       <p className="text-sm text-slate-500">{label}</p>
       <p className={`mt-2 whitespace-nowrap font-semibold tracking-tight ${size} ${valueColor}`}>
         {value}

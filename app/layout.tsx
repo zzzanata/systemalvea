@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { getCurrentUser } from "@/lib/auth";
 
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-poppins",
+});
+
 export const metadata: Metadata = {
   title: "GTG Energia | Gestão de Obras",
-  description: "Acompanhamento de obras, financeiro e estoque da GTG Energia",
+  description: "Gestão de obras da GTG Energia",
 };
 
 export const viewport: Viewport = {
@@ -22,8 +30,8 @@ export default async function RootLayout({
   const user = await getCurrentUser();
 
   return (
-    <html lang="pt-BR">
-      <body className="bg-brand-50 text-slate-900 antialiased">
+    <html lang="pt-BR" className={poppins.variable}>
+      <body className="bg-brand-50 font-sans text-slate-900 antialiased">
         {user ? (
           <div className="flex min-h-screen flex-col md:flex-row">
             <Sidebar user={{ name: user.name, role: user.role }} />

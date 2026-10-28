@@ -7,7 +7,7 @@ export default function ProjectCard({ project: p }: { project: ProjectSummary })
   return (
     <Link
       href={`/obras/${p.id}`}
-      className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow"
+      className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
     >
       <ProgressRing percent={p.percent} className="h-20 w-20 shrink-0" />
       <div className="min-w-0 space-y-1">

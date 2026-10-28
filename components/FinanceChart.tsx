@@ -91,6 +91,12 @@ export default function FinanceChart({ data }: { data: FinancePoint[] }) {
                     height={(b.v / top) * plotH}
                     rx={3}
                     fill={b.fill}
+                    className="animate-gtg-grow"
+                    style={{
+                      transformBox: "fill-box",
+                      transformOrigin: "bottom",
+                      animationDelay: `${i * 80 + (b.name === "Custos" ? 60 : 0)}ms`,
+                    }}
                   >
                     <title>{`${d.label} · ${b.name}: ${brl(b.v)}`}</title>
                   </rect>

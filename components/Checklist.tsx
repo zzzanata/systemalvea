@@ -172,7 +172,7 @@ export default function Checklist({
                   {done}/{stage.tasks.length}
                 </span>
                 <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                  <div className="h-full origin-left animate-gtg-fill rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             </div>

@@ -32,6 +32,7 @@ export default function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={`${(p / 100) * C} ${C}`}
           transform="rotate(-90 50 50)"
+          className="animate-gtg-ring"
         />
       )}
       <text
@@ -42,6 +43,7 @@ export default function ProgressRing({
         fontSize="22"
         fontWeight="600"
         fill="#000a73"
+        className="animate-gtg-text"
       >
         {p}%
       </text>
