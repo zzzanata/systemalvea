@@ -112,3 +112,12 @@ export const DownloadIcon = (p: IconProps) => (
     <path d="M5 21h14" />
   </Svg>
 );
+
+export const IdCardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2" />
+    <path d="M15 10h3M15 13h3" />
+  </Svg>
+);

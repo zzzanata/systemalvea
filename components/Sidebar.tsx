@@ -11,6 +11,7 @@ import {
   CloseIcon,
   FileIcon,
   HomeIcon,
+  IdCardIcon,
   MenuIcon,
   SunIcon,
   TrendIcon,
@@ -47,7 +48,10 @@ const groups: Group[] = [
   {
     title: "Administração",
     adminOnly: true,
-    items: [{ href: "/users", label: "Usuários", icon: UsersIcon }],
+    items: [
+      { href: "/funcionarios", label: "Funcionários", icon: IdCardIcon },
+      { href: "/users", label: "Usuários", icon: UsersIcon },
+    ],
   },
 ];
 

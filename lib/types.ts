@@ -221,6 +221,14 @@ export type InvoiceSummary = {
   next: (InvoiceRecord & { shown: InvoiceShownStatus })[];
 };
 
+export type Employee = {
+  id: string;
+  fullName: string;
+  jobTitle: string;
+  dailyRate: number | null;
+  monthlyRate: number | null;
+};
+
 // ---------- Resultados de ações ----------
 
 // Ações que terminam em redirecionamento devolvem undefined no sucesso.

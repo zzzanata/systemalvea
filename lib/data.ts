@@ -5,6 +5,7 @@ import { formatDay, lastMonths, monthKey, todayBR, todayStart } from "@/lib/date
 import type {
   AppUser,
   Category,
+  Employee,
   FinanceEntryItem,
   FinancePoint,
   InvoiceRecord,
@@ -340,4 +341,17 @@ export async function getProductHistory(id: string): Promise<ProductHistory | nu
       .map(([supplier, v]) => ({ supplier, ...v }))
       .sort((a, b) => a.lastCost - b.lastCost),
   };
+}
+
+// ---------- Funcionários ----------
+
+export async function getEmployees(): Promise<Employee[]> {
+  const rows = await prisma.employee.findMany({ orderBy: { fullName: "asc" } });
+  return rows.map((e) => ({
+    id: e.id,
+    fullName: e.fullName,
+    jobTitle: e.jobTitle,
+    dailyRate: e.dailyRate === null ? null : Number(e.dailyRate),
+    monthlyRate: e.monthlyRate === null ? null : Number(e.monthlyRate),
+  }));
 }
