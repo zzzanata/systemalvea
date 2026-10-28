@@ -4,81 +4,139 @@ import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { parseDay, todayBR } from "@/lib/dates";
-import { parseNumber, round2, text } from "@/lib/form";
+import { parseNumber, round2 } from "@/lib/form";
+import { normalizeAccessKey, normalizeCnpj } from "@/lib/invoices";
 import type { MutationResult } from "@/lib/types";
+
+// Tudo chega como texto, exatamente como foi digitado na linha da planilha.
+export type InvoiceInput = {
+  type: string;
+  number: string;
+  accessKey: string;
+  description: string;
+  amount: string;
+  issuedAt: string;
+  dueDate: string;
+  status: string; // PENDING | PAID | CANCELED
+  paidAt: string;
+  senderName: string;
+  senderCnpj: string;
+  recipientName: string;
+  recipientCnpj: string;
+  projectId: string;
+};
 
 function refresh() {
   revalidatePath("/");
   revalidatePath("/notas-fiscais");
 }
 
-export async function createInvoice(formData: FormData): Promise<MutationResult> {
-  await requireAdmin();
+type Parsed = { error: string } | { data: Record<string, unknown> };
 
-  const description = text(formData.get("description"));
-  const amount = parseNumber(formData.get("amount"));
-  const dueDate = parseDay(formData.get("dueDate"));
-  const number = text(formData.get("number"));
-  const projectId = text(formData.get("projectId"));
+function parseInput(input: InvoiceInput): Parsed {
+  const description = input.description.trim();
+  const amount = parseNumber(input.amount);
+  const accessKey = normalizeAccessKey(input.accessKey);
+  const senderCnpj = normalizeCnpj(input.senderCnpj);
+  const recipientCnpj = normalizeCnpj(input.recipientCnpj);
 
-  if (!description) return { error: "Informe o cliente ou o serviço." };
+  if (input.type !== "IN" && input.type !== "OUT") return { error: "Escolha o tipo: entrada ou saída." };
+  if (!description) return { error: "Informe a descrição." };
   if (amount === null || amount <= 0) return { error: "Informe um valor maior que zero." };
+  if (accessKey && accessKey.length !== 44) {
+    return { error: "A chave de acesso tem 44 caracteres." };
+  }
+  if ((senderCnpj && senderCnpj.length !== 14) || (recipientCnpj && recipientCnpj.length !== 14)) {
+    return { error: "O CNPJ tem 14 caracteres." };
+  }
+  if (!["PENDING", "PAID", "CANCELED"].includes(input.status)) return { error: "Status inválido." };
+
+  const paid = input.status === "PAID";
+
+  return {
+    data: {
+      type: input.type,
+      number: input.number.trim() || null,
+      accessKey: accessKey || null,
+      description,
+      amount: round2(amount),
+      issuedAt: parseDay(input.issuedAt),
+      dueDate: parseDay(input.dueDate),
+      status: input.status,
+      paidAt: paid ? (parseDay(input.paidAt) ?? parseDay(todayBR())) : null,
+      senderName: input.senderName.trim() || null,
+      senderCnpj: senderCnpj || null,
+      recipientName: input.recipientName.trim() || null,
+      recipientCnpj: recipientCnpj || null,
+      projectId: input.projectId || null,
+    },
+  };
+}
+
+function failure(e: unknown, fallback: string): { error: string } {
+  if ((e as { code?: string }).code === "P2002") {
+    return { error: "Já existe uma nota com essa chave de acesso." };
+  }
+  console.error(e);
+  return { error: fallback };
+}
+
+export async function createInvoice(input: InvoiceInput): Promise<MutationResult> {
+  await requireAdmin();
+  const parsed = parseInput(input);
+  if ("error" in parsed) return parsed;
 
   try {
-    await prisma.invoice.create({
-      data: {
-        description,
-        amount: round2(amount),
-        dueDate,
-        number: number || null,
-        projectId: projectId || null,
-      },
-    });
+    await prisma.invoice.create({ data: parsed.data as never });
   } catch (e) {
-    console.error(e);
-    return { error: "Não foi possível salvar a nota. Tente novamente." };
+    return failure(e, "Não foi possível salvar a nota. Tente novamente.");
   }
 
   refresh();
   return { success: true };
 }
 
-export async function markInvoiceIssued(
-  invoiceId: string,
-  number: string,
-  issuedDay: string,
-): Promise<MutationResult> {
+export async function updateInvoice(id: string, input: InvoiceInput): Promise<MutationResult> {
   await requireAdmin();
+  const parsed = parseInput(input);
+  if ("error" in parsed) return parsed;
 
-  const issuedAt = parseDay(issuedDay) ?? parseDay(todayBR());
+  try {
+    await prisma.invoice.update({ where: { id }, data: parsed.data as never });
+  } catch (e) {
+    return failure(e, "Não foi possível salvar as alterações.");
+  }
+
+  refresh();
+  return { success: true };
+}
+
+/** Atalho da linha: marca como paga (com a data de hoje) ou volta para pendente. */
+export async function setInvoicePaid(id: string, paid: boolean): Promise<MutationResult> {
+  await requireAdmin();
 
   try {
     await prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        status: "ISSUED",
-        issuedAt,
-        // Só sobrescreve o número se algum foi informado.
-        ...(number.trim() ? { number: number.trim() } : {}),
-      },
+      where: { id },
+      data: paid
+        ? { status: "PAID", paidAt: parseDay(todayBR()) }
+        : { status: "PENDING", paidAt: null },
     });
   } catch (e) {
-    console.error(e);
-    return { error: "Não foi possível marcar como emitida." };
+    return failure(e, "Não foi possível alterar o status.");
   }
 
   refresh();
   return { success: true };
 }
 
-export async function cancelInvoice(invoiceId: string): Promise<MutationResult> {
+export async function deleteInvoice(id: string): Promise<MutationResult> {
   await requireAdmin();
 
   try {
-    await prisma.invoice.update({ where: { id: invoiceId }, data: { status: "CANCELED" } });
+    await prisma.invoice.delete({ where: { id } });
   } catch (e) {
-    console.error(e);
-    return { error: "Não foi possível cancelar a nota." };
+    return failure(e, "Não foi possível excluir a nota.");
   }
 
   refresh();

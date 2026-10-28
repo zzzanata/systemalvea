@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import StatusBadge from "@/components/StatusBadge";
 import { brl, stockStatus, type Product, type StockStatus } from "@/lib/types";
@@ -80,7 +81,11 @@ export default function ProductsTable({
             {filtered.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.sku}</td>
-                <td className="px-4 py-3 font-medium">{p.name}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link href={`/products/${p.id}`} className="text-brand-900 hover:underline">
+                    {p.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-slate-600">{p.category}</td>
                 <td className="px-4 py-3 text-right tabular-nums">
                   {p.currentStock} <span className="text-slate-400">{p.unit}</span>

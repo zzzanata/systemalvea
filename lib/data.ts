@@ -1,15 +1,17 @@
 // Consultas ao banco. Use apenas em Server Components e Server Actions.
 import prisma from "@/lib/prisma";
+import { summarizeInvoices } from "@/lib/invoices";
 import { formatDay, lastMonths, monthKey, todayBR, todayStart } from "@/lib/dates";
 import type {
   AppUser,
   Category,
   FinanceEntryItem,
   FinancePoint,
-  InvoiceItem,
+  InvoiceRecord,
   InvoiceSummary,
   Movement,
   Product,
+  ProductHistory,
   ProjectDetail,
   ProjectOption,
   ProjectSummary,
@@ -247,56 +249,95 @@ export async function getFinanceEntries(limit = 100): Promise<FinanceEntryItem[]
 
 // ---------- Notas fiscais ----------
 
-async function fetchInvoices() {
-  return prisma.invoice.findMany({
+const isoDay = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+export async function getInvoices(): Promise<InvoiceRecord[]> {
+  const rows = await prisma.invoice.findMany({
     include: { project: { select: { name: true } } },
+    orderBy: [{ issuedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
   });
-}
 
-type InvoiceRow = Awaited<ReturnType<typeof fetchInvoices>>[number];
-
-function toInvoiceItem(i: InvoiceRow): InvoiceItem {
-  return {
+  return rows.map((i) => ({
     id: i.id,
+    type: i.type,
     number: i.number ?? "",
+    accessKey: i.accessKey ?? "",
     description: i.description,
     amount: Number(i.amount),
+    issuedAt: isoDay(i.issuedAt),
+    dueDate: isoDay(i.dueDate),
+    paidAt: isoDay(i.paidAt),
     status: i.status,
-    dueDate: formatDay(i.dueDate),
-    issuedAt: formatDay(i.issuedAt),
+    senderName: i.senderName ?? "",
+    senderCnpj: i.senderCnpj ?? "",
+    recipientName: i.recipientName ?? "",
+    recipientCnpj: i.recipientCnpj ?? "",
+    projectId: i.projectId ?? "",
     projectName: i.project?.name ?? "",
-    late: i.status === "PENDING" && i.dueDate !== null && i.dueDate < todayStart(),
-  };
-}
-
-const byDueDate = (a: InvoiceRow, b: InvoiceRow) =>
-  (a.dueDate?.getTime() ?? Infinity) - (b.dueDate?.getTime() ?? Infinity);
-
-export async function getInvoices(): Promise<InvoiceItem[]> {
-  const rows = await fetchInvoices();
-  const pending = rows.filter((r) => r.status === "PENDING").sort(byDueDate);
-  const issued = rows
-    .filter((r) => r.status === "ISSUED")
-    .sort((a, b) => (b.issuedAt?.getTime() ?? 0) - (a.issuedAt?.getTime() ?? 0));
-  const canceled = rows.filter((r) => r.status === "CANCELED");
-  return [...pending, ...issued, ...canceled].map(toInvoiceItem);
+  }));
 }
 
 export async function getInvoiceSummary(): Promise<InvoiceSummary> {
-  const rows = await fetchInvoices();
-  const currentMonth = todayBR().slice(0, 7);
+  return summarizeInvoices(await getInvoices(), todayBR());
+}
 
-  const pending = rows.filter((r) => r.status === "PENDING").sort(byDueDate);
-  const issuedThisMonth = rows.filter(
-    (r) => r.status === "ISSUED" && r.issuedAt !== null && monthKey(r.issuedAt) === currentMonth,
-  ).length;
-  const items = pending.map(toInvoiceItem);
+// ---------- Histórico de preços ----------
+
+export async function getProductHistory(id: string): Promise<ProductHistory | null> {
+  const p = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      category: true,
+      movements: {
+        where: { type: "IN", unitCost: { not: null } },
+        include: { supplier: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+  if (!p) return null;
+
+  const purchases = p.movements.map((m) => ({
+    id: m.id,
+    date: dateTimeFmt.format(m.createdAt).slice(0, 10),
+    supplier: m.supplier?.name ?? "",
+    invoiceNumber: m.invoiceNumber ?? "",
+    quantity: Number(m.quantity),
+    unitCost: Number(m.unitCost),
+  }));
+  const costs = purchases.map((x) => x.unitCost);
+
+  // Por fornecedor: só compras com fornecedor informado; as mais recentes vêm primeiro.
+  const map = new Map<string, { purchases: number; lastCost: number; minCost: number }>();
+  for (const x of purchases) {
+    if (!x.supplier) continue;
+    const cur = map.get(x.supplier);
+    if (!cur) map.set(x.supplier, { purchases: 1, lastCost: x.unitCost, minCost: x.unitCost });
+    else {
+      cur.purchases += 1;
+      cur.minCost = Math.min(cur.minCost, x.unitCost);
+    }
+  }
 
   return {
-    issuedThisMonth,
-    pendingCount: pending.length,
-    pendingAmount: items.reduce((s, i) => s + i.amount, 0),
-    lateCount: items.filter((i) => i.late).length,
-    next: items.slice(0, 6),
+    product: {
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      category: p.category?.name ?? "Sem categoria",
+      unit: p.unit,
+      costPrice: Number(p.costPrice),
+      salePrice: Number(p.salePrice),
+      minStock: Number(p.minStock),
+      currentStock: Number(p.currentStock),
+      active: p.active,
+    },
+    purchases,
+    lastCost: costs.length ? costs[0] : null,
+    minCost: costs.length ? Math.min(...costs) : null,
+    maxCost: costs.length ? Math.max(...costs) : null,
+    bySupplier: [...map.entries()]
+      .map(([supplier, v]) => ({ supplier, ...v }))
+      .sort((a, b) => a.lastCost - b.lastCost),
   };
 }

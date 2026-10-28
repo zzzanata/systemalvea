@@ -6,7 +6,10 @@ export type ProjectStatus = "ACTIVE" | "ON_HOLD" | "DONE";
 export type TaskStatus = "TODO" | "DOING" | "DONE";
 export type MemberRole = "LEAD" | "MEMBER";
 export type EntryType = "REVENUE" | "COST";
-export type InvoiceStatus = "PENDING" | "ISSUED" | "CANCELED";
+export type InvoiceStatus = "PENDING" | "ISSUED" | "CANCELED" | "PAID";
+export type InvoiceType = "IN" | "OUT";
+// O que aparece na tela: "Vencido" é calculado, não gravado.
+export type InvoiceShownStatus = "PENDING" | "PAID" | "OVERDUE" | "CANCELED";
 
 export const roleLabel: Record<Role, string> = {
   ADMIN: "Administrador",
@@ -30,10 +33,16 @@ export const memberRoleLabel: Record<MemberRole, string> = {
   MEMBER: "Equipe",
 };
 
-export const invoiceStatusLabel: Record<InvoiceStatus, string> = {
-  PENDING: "A emitir",
-  ISSUED: "Emitida",
+export const invoiceShownLabel: Record<InvoiceShownStatus, string> = {
+  PENDING: "Pendente",
+  PAID: "Pago",
+  OVERDUE: "Vencido",
   CANCELED: "Cancelada",
+};
+
+export const invoiceTypeLabel: Record<InvoiceType, string> = {
+  IN: "Entrada",
+  OUT: "Saída",
 };
 
 export type CurrentUser = {
@@ -81,6 +90,26 @@ export type Movement = {
   supplier: string;
   invoiceNumber: string;
   createdAt: string; // já formatado (fuso de São Paulo)
+};
+
+export type PurchaseItem = {
+  id: string;
+  date: string; // já formatado
+  supplier: string;
+  invoiceNumber: string;
+  quantity: number;
+  unitCost: number;
+};
+
+export type SupplierPrice = { supplier: string; purchases: number; lastCost: number; minCost: number };
+
+export type ProductHistory = {
+  product: Product;
+  purchases: PurchaseItem[]; // da mais recente para a mais antiga
+  lastCost: number | null;
+  minCost: number | null;
+  maxCost: number | null;
+  bySupplier: SupplierPrice[]; // do mais barato para o mais caro (último preço)
 };
 
 export type SupplierOption = { id: string; name: string };
@@ -151,24 +180,45 @@ export type FinanceEntryItem = {
   projectName: string;
 };
 
-export type InvoiceItem = {
+// Datas em AAAA-MM-DD ("" quando vazio): servem direto nos <input type="date">.
+export type InvoiceRecord = {
   id: string;
+  type: InvoiceType;
   number: string;
+  accessKey: string;
   description: string;
   amount: number;
-  status: InvoiceStatus;
-  dueDate: string;
   issuedAt: string;
+  dueDate: string;
+  paidAt: string;
+  status: InvoiceStatus;
+  senderName: string;
+  senderCnpj: string;
+  recipientName: string;
+  recipientCnpj: string;
+  projectId: string;
   projectName: string;
-  late: boolean;
+};
+
+export type InvoiceGroup = {
+  key: string;
+  label: string;
+  paidLabel: string;
+  count: number;
+  total: number;
+  paid: number;
+  percent: number;
 };
 
 export type InvoiceSummary = {
-  issuedThisMonth: number;
-  pendingCount: number;
+  groups: InvoiceGroup[];
+  paidAmount: number;
+  paidCount: number;
   pendingAmount: number;
-  lateCount: number;
-  next: InvoiceItem[];
+  pendingCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  next: (InvoiceRecord & { shown: InvoiceShownStatus })[];
 };
 
 // ---------- Resultados de ações ----------

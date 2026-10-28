@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Badge from "@/components/Badge";
 import FinanceChart from "@/components/FinanceChart";
+import InvoiceRings from "@/components/InvoiceRings";
 import Panel from "@/components/Panel";
 import ProgressRing from "@/components/ProgressRing";
 import StatCard from "@/components/StatCard";
@@ -10,6 +11,7 @@ import {
   brl,
   stockStatus,
   type FinancePoint,
+  invoiceTypeLabel,
   type InvoiceSummary,
   type ProjectSummary,
 } from "@/lib/types";
@@ -153,26 +155,6 @@ function FinancePanel({ data }: { data: FinancePoint[] }) {
   );
 }
 
-function Tile({
-  label,
-  value,
-  sub,
-  tone = "text-slate-900",
-}: {
-  label: string;
-  value: number;
-  sub?: string;
-  tone?: string;
-}) {
-  return (
-    <div className="rounded-lg bg-slate-50 p-3 text-center">
-      <p className={`text-2xl font-semibold ${tone}`}>{value}</p>
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
-    </div>
-  );
-}
-
 function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
   return (
     <Panel
@@ -184,23 +166,15 @@ function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <Tile label="Emitidas no mês" value={summary.issuedThisMonth} tone="text-emerald-600" />
-          <Tile
-            label="A emitir"
-            value={summary.pendingCount}
-            sub={summary.pendingCount > 0 ? brl(summary.pendingAmount) : undefined}
-          />
-          <Tile label="Atrasadas" value={summary.lateCount} tone="text-red-600" />
-        </div>
+        <InvoiceRings summary={summary} compact />
 
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Próximas a emitir
+            Próximos vencimentos
           </h3>
           {summary.next.length === 0 ? (
             <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
-              Nenhuma nota pendente.
+              Nenhuma nota em aberto.
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
@@ -209,12 +183,13 @@ function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{n.description}</p>
                     <p className="truncate text-xs text-slate-500">
-                      {n.projectName || "Sem obra"} · vence {n.dueDate}
+                      {invoiceTypeLabel[n.type]}
+                      {n.number ? ` · NF ${n.number}` : ""} · vence {n.dueDate ? n.dueDate.split("-").reverse().join("/") : "—"}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-medium">{brl(n.amount)}</p>
-                    {n.late && <Badge tone="rose">Atrasada</Badge>}
+                    {n.shown === "OVERDUE" && <Badge tone="rose">Vencido</Badge>}
                   </div>
                 </li>
               ))}

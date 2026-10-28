@@ -166,10 +166,19 @@ enum EntryType {
   COST
 }
 
+// Status guardado. Na tela: PENDING/ISSUED = "Pendente" (vira "Vencido" sozinho
+// quando passa do vencimento), PAID = "Pago", CANCELED = "Cancelada".
+// ISSUED e o PENDING antigo ("a emitir") continuam existindo para não perder dados.
 enum InvoiceStatus {
   PENDING
   ISSUED
   CANCELED
+  PAID
+}
+
+enum InvoiceType {
+  IN  // entrada: nota de compra recebida (a pagar)
+  OUT // saída: nota emitida pela empresa (a receber)
 }
 
 // Faturamento (REVENUE) ou custo (COST).
@@ -199,8 +208,17 @@ model Invoice {
   issuedAt    DateTime?
   createdAt   DateTime      @default(now())
 
+  type          InvoiceType @default(OUT)
+  accessKey     String?     @unique
+  paidAt        DateTime?
+  senderName    String?
+  senderCnpj    String?
+  recipientName String?
+  recipientCnpj String?
+
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([status, dueDate])
   @@index([projectId])
+  @@index([type])
 }
