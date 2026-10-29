@@ -193,7 +193,17 @@ enum InvoiceType {
   OUT // saída: nota de despesa (a pagar)
 }
 
-// Faturamento (REVENUE) ou custo (COST).
+// Categorias das movimentações (hotel, combustível, funcionários...).
+model FinanceCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  entries FinanceEntry[]
+}
+
+// Movimentação: entrada de dinheiro (REVENUE = faturamento) ou saída (COST = custo).
+// amount é sempre o TOTAL (quantidade x valor unitário); é ele que alimenta os gráficos.
 model FinanceEntry {
   id          String    @id @default(cuid())
   projectId   String?
@@ -203,10 +213,16 @@ model FinanceEntry {
   description String
   createdAt   DateTime  @default(now())
 
-  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  categoryId String?
+  quantity   Decimal  @default(1) @db.Decimal(12, 3)
+  unitValue  Decimal? @db.Decimal(14, 2)
+
+  project  Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  category FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([date])
   @@index([projectId])
+  @@index([categoryId])
 }
 
 model Invoice {

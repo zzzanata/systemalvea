@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logout } from "@/app/auth/actions";
 import {
-  ArrowsIcon,
   BoxIcon,
   CloseIcon,
   FileIcon,
@@ -34,7 +33,7 @@ const groups: Group[] = [
     title: "Financeiro",
     adminOnly: true,
     items: [
-      { href: "/financeiro", label: "Faturamento", icon: TrendIcon },
+      { href: "/financeiro", label: "Movimentações", icon: TrendIcon },
       { href: "/notas-fiscais", label: "Notas fiscais", icon: FileIcon },
     ],
   },
@@ -42,7 +41,6 @@ const groups: Group[] = [
     title: "Estoque",
     items: [
       { href: "/products", label: "Produtos", icon: BoxIcon },
-      { href: "/movements", label: "Movimentações", icon: ArrowsIcon },
     ],
   },
   {

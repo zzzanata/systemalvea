@@ -25,7 +25,7 @@ async function counts() {
     ["obras", await prisma.project.count()],
     ["tarefas dos checklists", await prisma.task.count()],
     ["membros de equipe", await prisma.teamMember.count()],
-    ["lançamentos financeiros", await prisma.financeEntry.count()],
+    ["movimentações", await prisma.financeEntry.count()],
     ["notas fiscais", await prisma.invoice.count()],
     ["funcionários", await prisma.employee.count()],
   ];
@@ -58,6 +58,7 @@ async function main() {
     await tx.task.deleteMany();
     await tx.teamMember.deleteMany();
     await tx.financeEntry.deleteMany();
+    await tx.financeCategory.deleteMany();
     await tx.invoice.deleteMany();
     await tx.project.deleteMany();
     await tx.employee.deleteMany();

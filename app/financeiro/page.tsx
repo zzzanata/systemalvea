@@ -1,19 +1,25 @@
-import DeleteEntryButton from "@/components/DeleteEntryButton";
 import FinanceChart from "@/components/FinanceChart";
-import FinanceForm from "@/components/FinanceForm";
+import MovementGrid from "@/components/MovementGrid";
+import Panel from "@/components/Panel";
 import { requireAdmin } from "@/lib/auth";
 import { todayBR } from "@/lib/dates";
-import { getFinanceEntries, getFinanceSeries, getProjectOptions } from "@/lib/data";
+import {
+  getFinanceCategories,
+  getFinanceSeries,
+  getMovementRecords,
+  getProjectOptions,
+} from "@/lib/data";
 import { brl } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function FinancePage() {
+export default async function MovimentacoesPage() {
   await requireAdmin();
 
-  const [series, entries, projects] = await Promise.all([
+  const [series, entries, categories, projects] = await Promise.all([
     getFinanceSeries(6),
-    getFinanceEntries(100),
+    getMovementRecords(),
+    getFinanceCategories(),
     getProjectOptions(),
   ]);
 
@@ -21,79 +27,75 @@ export default async function FinancePage() {
   const cost = series.reduce((s, d) => s + d.cost, 0);
   const result = revenue - cost;
 
+  // Saídas por categoria (todas as movimentações).
+  const byCategory = new Map<string, number>();
+  for (const e of entries) {
+    if (e.type !== "COST") continue;
+    const name = e.categoryName || "Sem categoria";
+    byCategory.set(name, (byCategory.get(name) ?? 0) + e.amount);
+  }
+  const top = [...byCategory.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const topMax = top[0]?.[1] ?? 0;
+
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Faturamento e custos</h1>
-        <p className="text-sm text-slate-500">Entradas e saídas de dinheiro, mês a mês</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Movimentações</h1>
+        <p className="text-sm text-slate-500">
+          Gastos e ganhos da empresa. Entrada conta como faturamento, saída como custo.
+        </p>
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Faturamento</p>
-                <p className="font-semibold text-emerald-600">{brl(revenue)}</p>
+        <div className="lg:col-span-2">
+          <Panel title="Últimos 6 meses">
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Faturamento</p>
+                  <p className="text-sm font-semibold text-emerald-600">{brl(revenue)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Custos</p>
+                  <p className="text-sm font-semibold text-red-600">{brl(cost)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Resultado</p>
+                  <p className={`text-sm font-semibold ${result >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    {brl(result)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Custos</p>
-                <p className="font-semibold text-red-600">{brl(cost)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Resultado</p>
-                <p className={`font-semibold ${result >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                  {brl(result)}
-                </p>
-              </div>
+              <FinanceChart data={series} />
             </div>
-            <FinanceChart data={series} />
-            <p className="text-center text-xs text-slate-400">Últimos 6 meses</p>
-          </section>
-
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <h2 className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700">
-              Lançamentos recentes
-            </h2>
-            {entries.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-slate-400">
-                Nenhum lançamento ainda.
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {entries.map((e) => (
-                  <li key={e.id} className="flex items-center gap-3 px-4 py-3">
-                    <span
-                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                        e.type === "REVENUE" ? "bg-emerald-500" : "bg-red-500"
-                      }`}
-                      aria-label={e.type === "REVENUE" ? "Faturamento" : "Custo"}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{e.description}</p>
-                      <p className="truncate text-xs text-slate-500">
-                        {e.date}
-                        {e.projectName ? ` · ${e.projectName}` : ""}
-                      </p>
-                    </div>
-                    <p
-                      className={`shrink-0 text-sm font-semibold tabular-nums ${
-                        e.type === "REVENUE" ? "text-emerald-600" : "text-red-600"
-                      }`}
-                    >
-                      {e.type === "REVENUE" ? "+" : "-"}
-                      {brl(e.amount)}
-                    </p>
-                    <DeleteEntryButton entryId={e.id} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          </Panel>
         </div>
 
-        <FinanceForm projects={projects} today={todayBR()} />
+        <Panel title="Custos por categoria">
+          {top.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-400">Nenhuma saída ainda.</p>
+          ) : (
+            <ul className="space-y-3">
+              {top.map(([name, value]) => (
+                <li key={name} className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="truncate font-medium">{name}</span>
+                    <span className="shrink-0 tabular-nums text-slate-600">{brl(value)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-brand-100">
+                    <div
+                      className="h-full origin-left animate-gtg-fill rounded-full bg-sun-400"
+                      style={{ width: `${topMax ? (value / topMax) * 100 : 0}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
       </div>
+
+      <MovementGrid entries={entries} categories={categories} projects={projects} today={todayBR()} />
     </div>
   );
 }

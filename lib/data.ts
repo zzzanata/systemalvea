@@ -6,17 +6,15 @@ import type {
   AppUser,
   Category,
   Employee,
-  FinanceEntryItem,
+  CategoryOption,
+  MovementRecord,
   FinancePoint,
   InvoiceRecord,
   InvoiceSummary,
-  Movement,
   Product,
-  ProductHistory,
   ProjectDetail,
   ProjectOption,
   ProjectSummary,
-  SupplierOption,
 } from "@/lib/types";
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -63,6 +61,7 @@ export async function getProducts(): Promise<Product[]> {
     sku: p.sku,
     name: p.name,
     category: p.category?.name ?? "Sem categoria",
+    categoryId: p.categoryId ?? "",
     unit: p.unit,
     costPrice: Number(p.costPrice),
     salePrice: Number(p.salePrice),
@@ -75,33 +74,6 @@ export async function getProducts(): Promise<Product[]> {
 export async function getCategories(): Promise<Category[]> {
   const rows = await prisma.category.findMany({ orderBy: { name: "asc" } });
   return rows.map((c) => ({ id: c.id, name: c.name }));
-}
-
-export async function getSuppliers(): Promise<SupplierOption[]> {
-  const rows = await prisma.supplier.findMany({ orderBy: { name: "asc" } });
-  return rows.map((x) => ({ id: x.id, name: x.name }));
-}
-
-export async function getMovements(limit?: number): Promise<Movement[]> {
-  const rows = await prisma.stockMovement.findMany({
-    include: { product: true, user: true, supplier: true },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-
-  return rows.map((m) => ({
-    id: m.id,
-    productId: m.productId,
-    productName: m.product.name,
-    type: m.type,
-    quantity: Number(m.quantity),
-    reason: m.reason ?? "",
-    user: m.user.name,
-    unitCost: m.unitCost === null ? null : Number(m.unitCost),
-    supplier: m.supplier?.name ?? "",
-    invoiceNumber: m.invoiceNumber ?? "",
-    createdAt: dateTimeFmt.format(m.createdAt),
-  }));
 }
 
 // ---------- Obras ----------
@@ -231,21 +203,47 @@ export async function getFinanceSeries(months = 6): Promise<FinancePoint[]> {
   return [...byMonth.values()];
 }
 
-export async function getFinanceEntries(limit = 100): Promise<FinanceEntryItem[]> {
+const DEFAULT_FINANCE_CATEGORIES = [
+  "Hotel", "Combustível", "Alimentação", "Funcionários", "Materiais",
+  "Ferramentas", "Transporte", "Manutenção", "Medição de obra", "Outros",
+];
+
+export async function getFinanceCategories(): Promise<CategoryOption[]> {
+  // Primeira vez: cria categorias comuns para você não começar do zero.
+  if ((await prisma.financeCategory.count()) === 0) {
+    await prisma.financeCategory.createMany({
+      data: DEFAULT_FINANCE_CATEGORIES.map((name) => ({ name })),
+      skipDuplicates: true,
+    });
+  }
+  const rows = await prisma.financeCategory.findMany({ orderBy: { name: "asc" } });
+  return rows.map((c) => ({ id: c.id, name: c.name }));
+}
+
+export async function getMovementRecords(): Promise<MovementRecord[]> {
   const rows = await prisma.financeEntry.findMany({
-    include: { project: { select: { name: true } } },
+    include: { project: { select: { name: true } }, category: { select: { name: true } } },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: limit,
   });
 
-  return rows.map((e) => ({
-    id: e.id,
-    type: e.type,
-    amount: Number(e.amount),
-    date: formatDay(e.date),
-    description: e.description,
-    projectName: e.project?.name ?? "",
-  }));
+  return rows.map((e) => {
+    const amount = Number(e.amount);
+    const quantity = Number(e.quantity) || 1;
+    return {
+      id: e.id,
+      type: e.type,
+      date: e.date.toISOString().slice(0, 10),
+      categoryId: e.categoryId ?? "",
+      categoryName: e.category?.name ?? "",
+      description: e.description,
+      quantity,
+      // Lançamentos antigos não têm valor unitário: deduz do total.
+      unitValue: e.unitValue === null ? amount / quantity : Number(e.unitValue),
+      amount,
+      projectId: e.projectId ?? "",
+      projectName: e.project?.name ?? "",
+    };
+  });
 }
 
 // ---------- Notas fiscais ----------
@@ -280,67 +278,6 @@ export async function getInvoices(): Promise<InvoiceRecord[]> {
 
 export async function getInvoiceSummary(): Promise<InvoiceSummary> {
   return summarizeInvoices(await getInvoices(), todayBR());
-}
-
-// ---------- Histórico de preços ----------
-
-export async function getProductHistory(id: string): Promise<ProductHistory | null> {
-  const p = await prisma.product.findUnique({
-    where: { id },
-    include: {
-      category: true,
-      movements: {
-        where: { type: "IN", unitCost: { not: null } },
-        include: { supplier: true },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-  if (!p) return null;
-
-  const purchases = p.movements.map((m) => ({
-    id: m.id,
-    date: dateTimeFmt.format(m.createdAt).slice(0, 10),
-    supplier: m.supplier?.name ?? "",
-    invoiceNumber: m.invoiceNumber ?? "",
-    quantity: Number(m.quantity),
-    unitCost: Number(m.unitCost),
-  }));
-  const costs = purchases.map((x) => x.unitCost);
-
-  // Por fornecedor: só compras com fornecedor informado; as mais recentes vêm primeiro.
-  const map = new Map<string, { purchases: number; lastCost: number; minCost: number }>();
-  for (const x of purchases) {
-    if (!x.supplier) continue;
-    const cur = map.get(x.supplier);
-    if (!cur) map.set(x.supplier, { purchases: 1, lastCost: x.unitCost, minCost: x.unitCost });
-    else {
-      cur.purchases += 1;
-      cur.minCost = Math.min(cur.minCost, x.unitCost);
-    }
-  }
-
-  return {
-    product: {
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      category: p.category?.name ?? "Sem categoria",
-      unit: p.unit,
-      costPrice: Number(p.costPrice),
-      salePrice: Number(p.salePrice),
-      minStock: Number(p.minStock),
-      currentStock: Number(p.currentStock),
-      active: p.active,
-    },
-    purchases,
-    lastCost: costs.length ? costs[0] : null,
-    minCost: costs.length ? Math.min(...costs) : null,
-    maxCost: costs.length ? Math.max(...costs) : null,
-    bySupplier: [...map.entries()]
-      .map(([supplier, v]) => ({ supplier, ...v }))
-      .sort((a, b) => a.lastCost - b.lastCost),
-  };
 }
 
 // ---------- Funcionários ----------

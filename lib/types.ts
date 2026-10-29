@@ -70,49 +70,15 @@ export type Product = {
   sku: string;
   name: string;
   category: string;
+  categoryId: string;
   unit: string;
-  costPrice: number;
+  costPrice: number; // valor unitário
   salePrice: number;
   minStock: number;
   currentStock: number;
   active: boolean;
 };
 
-export type Movement = {
-  id: string;
-  productId: string;
-  productName: string;
-  type: MovementType;
-  quantity: number;
-  reason: string;
-  user: string;
-  unitCost: number | null;
-  supplier: string;
-  invoiceNumber: string;
-  createdAt: string; // já formatado (fuso de São Paulo)
-};
-
-export type PurchaseItem = {
-  id: string;
-  date: string; // já formatado
-  supplier: string;
-  invoiceNumber: string;
-  quantity: number;
-  unitCost: number;
-};
-
-export type SupplierPrice = { supplier: string; purchases: number; lastCost: number; minCost: number };
-
-export type ProductHistory = {
-  product: Product;
-  purchases: PurchaseItem[]; // da mais recente para a mais antiga
-  lastCost: number | null;
-  minCost: number | null;
-  maxCost: number | null;
-  bySupplier: SupplierPrice[]; // do mais barato para o mais caro (último preço)
-};
-
-export type SupplierOption = { id: string; name: string };
 
 // ---------- Obras ----------
 
@@ -171,14 +137,22 @@ export type ProjectOption = { id: string; name: string };
 
 export type FinancePoint = { label: string; revenue: number; cost: number };
 
-export type FinanceEntryItem = {
+// Movimentação (entrada = faturamento, saída = custo). Datas em AAAA-MM-DD.
+export type MovementRecord = {
   id: string;
   type: EntryType;
-  amount: number;
   date: string;
+  categoryId: string;
+  categoryName: string;
   description: string;
+  quantity: number;
+  unitValue: number;
+  amount: number; // total = quantidade x valor unitário
+  projectId: string;
   projectName: string;
 };
+
+export type CategoryOption = { id: string; name: string };
 
 // Datas em AAAA-MM-DD ("" quando vazio): servem direto nos <input type="date">.
 export type InvoiceRecord = {

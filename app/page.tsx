@@ -19,6 +19,9 @@ import {
 // Lê do banco a cada acesso (não gera a página estática no build).
 export const dynamic = "force-dynamic";
 
+// 2026-10-28 -> 28/10/26
+const shortDay = (d: string) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(2, 4)}` : "—");
+
 const panelLink = "text-xs font-medium text-white/80 hover:text-white";
 
 function ProjectsPanel({
@@ -117,7 +120,7 @@ function FinancePanel({ data }: { data: FinancePoint[] }) {
       title="Faturamento e custos"
       action={
         <Link href="/financeiro" className={panelLink}>
-          Lançamentos
+          Movimentações
         </Link>
       }
     >
@@ -184,7 +187,7 @@ function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
                     <p className="truncate text-sm font-medium">{n.description}</p>
                     <p className="truncate text-xs text-slate-500">
                       {invoiceTypeLabel[n.type]}
-                      {n.number ? ` · NF ${n.number}` : ""} · vence {n.dueDate ? n.dueDate.split("-").reverse().join("/") : "—"}
+                      {n.number ? ` · NF ${n.number}` : ""} · vence {shortDay(n.dueDate)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -241,7 +244,7 @@ export default async function DashboardPage() {
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="Produtos ativos" value={products.length} />
-          <StatCard label="Valor em estoque" value={brl(stockValue)} hint="a custo médio" />
+          <StatCard label="Valor em estoque" value={brl(stockValue)} hint="valor unitário × quantidade" />
           <StatCard label="Estoque baixo" value={lowItems.length} tone="warn" />
           <StatCard label="Em falta" value={outItems.length} tone="danger" />
         </div>

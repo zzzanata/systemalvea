@@ -35,7 +35,7 @@ export default function FinanceChart({ data }: { data: FinancePoint[] }) {
   if (max === 0) {
     return (
       <p className="rounded-lg bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
-        Nenhum lançamento nos últimos meses.
+        Nenhuma movimentação nos últimos meses.
       </p>
     );
   }
