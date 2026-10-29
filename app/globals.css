@@ -25,6 +25,7 @@
   --animate-gtg-pulse: gtg-pulse 1.1s ease-in-out infinite;
   --animate-gtg-bar: gtg-bar 1.1s ease-in-out infinite;
 
+  --animate-gtg-slide: gtg-slide 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-gtg-in: gtg-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-gtg-page: gtg-text 0.35s ease-out both;
   --animate-gtg-ring: gtg-ring 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
@@ -38,6 +39,11 @@
     to { opacity: 1; transform: none; }
   }
   /* Anel "enchendo": o traço parte de zero até o valor final. */
+  /* Painel lateral entrando pela direita. */
+  @keyframes gtg-slide {
+    from { opacity: 0; transform: translateX(28px); }
+    to { opacity: 1; transform: none; }
+  }
   @keyframes gtg-ring {
     from { stroke-dasharray: 0 264; }
   }

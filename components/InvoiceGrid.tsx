@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   createInvoice,
   deleteInvoice,
@@ -9,7 +9,7 @@ import {
   type InvoiceInput,
 } from "@/app/notas-fiscais/actions";
 import Badge, { type BadgeTone } from "@/components/Badge";
-import { CheckIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
+import { CheckIcon, CloseIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
 import { formatAccessKey, formatCnpj, normalizeAccessKey, shownStatus } from "@/lib/invoices";
 import {
   brl,
@@ -20,30 +20,18 @@ import {
   type ProjectOption,
 } from "@/lib/types";
 
-type SortKey =
-  | "issuedAt"
-  | "type"
-  | "number"
-  | "description"
-  | "amount"
-  | "dueDate"
-  | "status"
-  | "sender"
-  | "recipient"
-  | "project";
+type SortKey = "issuedAt" | "type" | "number" | "recipient" | "description" | "amount" | "dueDate" | "status";
 
-const cols: { key: SortKey | null; label: string; cls: string }[] = [
-  { key: "issuedAt", label: "Emissão", cls: "min-w-[125px]" },
-  { key: "type", label: "Tipo", cls: "min-w-[105px]" },
-  { key: "number", label: "Nº da nota", cls: "min-w-[110px]" },
-  { key: null, label: "Chave de acesso", cls: "min-w-[170px]" },
-  { key: "description", label: "Descrição", cls: "min-w-[230px]" },
-  { key: "amount", label: "Valor", cls: "min-w-[130px] text-right" },
-  { key: "dueDate", label: "Vencimento", cls: "min-w-[125px]" },
-  { key: "status", label: "Status", cls: "min-w-[130px]" },
-  { key: "sender", label: "Remetente", cls: "min-w-[240px]" },
-  { key: "recipient", label: "Destinatário", cls: "min-w-[240px]" },
-  { key: "project", label: "Obra", cls: "min-w-[160px]" },
+// Tabela enxuta: o resto das informações aparece ao clicar na nota.
+const cols: { key: SortKey; label: string; cls: string }[] = [
+  { key: "issuedAt", label: "Emissão", cls: "hidden sm:table-cell" },
+  { key: "type", label: "Tipo", cls: "hidden md:table-cell" },
+  { key: "number", label: "Nº", cls: "hidden md:table-cell" },
+  { key: "recipient", label: "Destinatário", cls: "" },
+  { key: "description", label: "Descrição", cls: "hidden lg:table-cell" },
+  { key: "amount", label: "Valor", cls: "text-right" },
+  { key: "dueDate", label: "Vencimento", cls: "hidden lg:table-cell" },
+  { key: "status", label: "Status", cls: "" },
 ];
 
 const statusTone: Record<InvoiceShownStatus, BadgeTone> = {
@@ -53,10 +41,8 @@ const statusTone: Record<InvoiceShownStatus, BadgeTone> = {
   CANCELED: "slate",
 };
 
-const cell =
-  "w-full rounded border border-brand-300 bg-white px-2 py-1 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-300";
-const toolbarInput =
-  "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+const field =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 const dmy = (d: string) => (d ? d.split("-").reverse().join("/") : "—");
 
@@ -106,6 +92,8 @@ function csvCell(v: string | number) {
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+type Panel = { mode: "view" | "edit"; id: string } | { mode: "new" } | null;
+
 export default function InvoiceGrid({
   invoices,
   projects,
@@ -119,11 +107,25 @@ export default function InvoiceGrid({
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null); // id, "new" ou null
+  const [panel, setPanel] = useState<Panel>(null);
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(today));
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState("");
+  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  const selected =
+    panel && panel.mode !== "new" ? (invoices.find((i) => i.id === panel.id) ?? null) : null;
+
+  // Esc fecha o painel; se a nota foi excluída (ou sumiu), o painel fecha sozinho.
+  useEffect(() => {
+    if (!panel) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPanel(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panel]);
+  useEffect(() => {
+    if (panel && panel.mode !== "new" && !selected) setPanel(null);
+  }, [panel, selected]);
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -151,6 +153,8 @@ export default function InvoiceGrid({
             return r.type;
           case "number":
             return r.number;
+          case "recipient":
+            return r.recipientName.toLowerCase();
           case "description":
             return r.description.toLowerCase();
           case "amount":
@@ -159,12 +163,6 @@ export default function InvoiceGrid({
             return r.dueDate;
           case "status":
             return shown;
-          case "sender":
-            return r.senderName.toLowerCase();
-          case "recipient":
-            return r.recipientName.toLowerCase();
-          case "project":
-            return r.projectName.toLowerCase();
         }
       };
       list.sort((a, b) => {
@@ -195,39 +193,40 @@ export default function InvoiceGrid({
     setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }));
   }
 
-  function startNew() {
-    setDraft(emptyDraft(today));
-    setError("");
-    setEditingId("new");
-  }
-
-  function startEdit(r: InvoiceRecord) {
-    setDraft(toDraft(r));
-    setError("");
-    setEditingId(r.id);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setError("");
-  }
-
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
+  function openNew() {
+    setDraft(emptyDraft(today));
+    setError("");
+    setPanel({ mode: "new" });
+  }
+
+  function openView(r: InvoiceRecord) {
+    setError("");
+    setPanel({ mode: "view", id: r.id });
+  }
+
+  function openEdit(r: InvoiceRecord) {
+    setDraft(toDraft(r));
+    setError("");
+    setPanel({ mode: "edit", id: r.id });
+  }
+
   function save() {
     setError("");
+    const current = panel;
+    if (!current) return;
     startTransition(async () => {
       const result =
-        editingId === "new" ? await createInvoice(draft) : await updateInvoice(editingId!, draft);
+        current.mode === "new" ? await createInvoice(draft) : await updateInvoice(current.id, draft);
       if ("error" in result) setError(result.error);
-      else setEditingId(null);
+      else setPanel(current.mode === "new" ? null : { mode: "view", id: current.id });
     });
   }
 
   function togglePaid(r: InvoiceRecord) {
-    setError("");
     startTransition(async () => {
       const result = await setInvoicePaid(r.id, r.status !== "PAID");
       if ("error" in result) alert(result.error);
@@ -240,14 +239,15 @@ export default function InvoiceGrid({
     startTransition(async () => {
       const result = await deleteInvoice(r.id);
       if ("error" in result) alert(result.error);
+      else setPanel(null);
     });
   }
 
   async function copyKey(key: string) {
     try {
       await navigator.clipboard.writeText(key);
-      setCopied(key);
-      setTimeout(() => setCopied(""), 1500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch {
       /* sem permissão de área de transferência: ignora */
     }
@@ -280,96 +280,7 @@ export default function InvoiceGrid({
     URL.revokeObjectURL(a.href);
   }
 
-  function onKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
-      e.preventDefault();
-      save();
-    } else if (e.key === "Escape") cancelEdit();
-  }
-
-  const editing = editingId !== null;
-
-  function EditRow() {
-    return (
-      <>
-        <tr className="bg-brand-50/60" onKeyDown={onKey}>
-          <td className="px-2 py-2">
-            <input type="date" value={draft.issuedAt} onChange={(e) => set("issuedAt", e.target.value)} className={cell} aria-label="Data de emissão" />
-          </td>
-          <td className="px-2 py-2">
-            <select value={draft.type} onChange={(e) => set("type", e.target.value)} className={cell} aria-label="Tipo">
-              <option value="IN">Entrada</option>
-              <option value="OUT">Saída</option>
-            </select>
-          </td>
-          <td className="px-2 py-2">
-            <input value={draft.number} onChange={(e) => set("number", e.target.value)} className={cell} placeholder="Nº" aria-label="Número da nota" />
-          </td>
-          <td className="px-2 py-2">
-            <input
-              value={formatAccessKey(draft.accessKey)}
-              onChange={(e) => set("accessKey", normalizeAccessKey(e.target.value))}
-              className={`${cell} font-mono`}
-              placeholder="Chave ou código"
-              aria-label="Chave de acesso"
-            />
-          </td>
-          <td className="px-2 py-2">
-            <input value={draft.description} onChange={(e) => set("description", e.target.value)} className={cell} placeholder="Descrição breve" aria-label="Descrição" autoFocus />
-          </td>
-          <td className="px-2 py-2">
-            <input value={draft.amount} onChange={(e) => set("amount", e.target.value)} inputMode="decimal" className={`${cell} text-right`} placeholder="0,00" aria-label="Valor" />
-          </td>
-          <td className="px-2 py-2">
-            <input type="date" value={draft.dueDate} onChange={(e) => set("dueDate", e.target.value)} className={cell} aria-label="Vencimento" />
-          </td>
-          <td className="px-2 py-2">
-            <select value={draft.status} onChange={(e) => set("status", e.target.value)} className={cell} aria-label="Status">
-              <option value="PENDING">Pendente</option>
-              <option value="PAID">Pago</option>
-              <option value="CANCELED">Cancelada</option>
-            </select>
-            {draft.status === "PAID" && (
-              <input type="date" value={draft.paidAt} onChange={(e) => set("paidAt", e.target.value)} className={`${cell} mt-1`} aria-label="Data do pagamento" title="Data do pagamento (vazio = hoje)" />
-            )}
-          </td>
-          <td className="space-y-1 px-2 py-2">
-            <input value={draft.senderName} onChange={(e) => set("senderName", e.target.value)} className={cell} placeholder="Razão social" aria-label="Razão social do remetente" />
-            <input value={draft.senderCnpj} onChange={(e) => set("senderCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ/CPF" aria-label="CNPJ/CPF do remetente" />
-          </td>
-          <td className="space-y-1 px-2 py-2">
-            <input value={draft.recipientName} onChange={(e) => set("recipientName", e.target.value)} className={cell} placeholder="Razão social" aria-label="Razão social do destinatário" />
-            <input value={draft.recipientCnpj} onChange={(e) => set("recipientCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ/CPF" aria-label="CNPJ/CPF do destinatário" />
-          </td>
-          <td className="px-2 py-2">
-            <select value={draft.projectId} onChange={(e) => set("projectId", e.target.value)} className={cell} aria-label="Obra">
-              <option value="">Sem obra</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </td>
-          <td className="sticky right-0 bg-brand-50 px-2 py-2 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]">
-            <div className="flex flex-col gap-1">
-              <button type="button" onClick={save} disabled={pending} className="rounded bg-brand-900 px-2 py-1 text-xs font-medium text-white hover:bg-brand-800 disabled:opacity-60">
-                {pending ? "Salvando..." : "Salvar"}
-              </button>
-              <button type="button" onClick={cancelEdit} disabled={pending} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                Cancelar
-              </button>
-            </div>
-          </td>
-        </tr>
-        {error && (
-          <tr className="bg-brand-50/60">
-            <td colSpan={cols.length + 1} className="px-3 pb-2 text-xs text-red-600">{error}</td>
-          </tr>
-        )}
-      </>
-    );
-  }
-
-  const arrow = (key: SortKey) => (sort?.key === key ? (sort.dir === 1 ? " ▲" : " ▼") : "");
+  const toolbar = `${field} !w-auto`;
 
   return (
     <div className="space-y-3">
@@ -378,14 +289,14 @@ export default function InvoiceGrid({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar por descrição, nº, chave, CNPJ/CPF, razão social..."
-          className={`${toolbarInput} min-w-0 flex-1 basis-64`}
+          className={`${field} min-w-0 flex-1 basis-64`}
         />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={toolbarInput} aria-label="Filtrar por tipo">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={toolbar} aria-label="Filtrar por tipo">
           <option value="">Entrada e saída</option>
           <option value="IN">Só entradas</option>
           <option value="OUT">Só saídas</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={toolbarInput} aria-label="Filtrar por status">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={toolbar} aria-label="Filtrar por status">
           <option value="">Todos os status</option>
           <option value="PENDING">Pendente</option>
           <option value="OVERDUE">Vencido</option>
@@ -395,99 +306,85 @@ export default function InvoiceGrid({
         <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" title="Baixa as linhas filtradas para abrir no Excel">
           <DownloadIcon className="h-4 w-4" /> Exportar
         </button>
-        <button type="button" onClick={startNew} disabled={editing} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50">
+        <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800">
           <PlusIcon className="h-4 w-4" /> Nova nota
         </button>
       </div>
 
-      <p className="text-xs text-slate-400 lg:hidden">Arraste a tabela para o lado para ver todas as colunas.</p>
+      <p className="text-xs text-slate-400">Clique em uma nota para ver todos os detalhes.</p>
 
       <div className="max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1900px] border-collapse text-left text-sm">
+        <table className="w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-brand-900 text-xs uppercase tracking-wide text-white">
             <tr>
               {cols.map((c) => (
-                <th key={c.label} className={`px-3 py-2.5 font-medium ${c.cls}`}>
-                  {c.key ? (
-                    <button type="button" onClick={() => toggleSort(c.key!)} className="uppercase tracking-wide hover:text-sun-400">
-                      {c.label}
-                      {arrow(c.key)}
-                    </button>
-                  ) : (
-                    c.label
-                  )}
+                <th key={c.key} className={`px-2 py-2.5 font-medium sm:px-3 ${c.cls}`}>
+                  <button type="button" onClick={() => toggleSort(c.key)} className="uppercase tracking-wide hover:text-sun-400">
+                    {c.label}
+                    {sort?.key === c.key ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+                  </button>
                 </th>
               ))}
-              <th className="sticky right-0 min-w-[120px] bg-brand-900 px-3 py-2.5 font-medium">Ações</th>
+              <th className="hidden w-28 px-3 py-2.5 font-medium md:table-cell">
+                <span className="sr-only">Ações</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {editingId === "new" && EditRow()}
-
-            {rows.map(({ r, shown }) =>
-              editingId === r.id ? (
-                <Fragment key={r.id}>{EditRow()}</Fragment>
-              ) : (
-                <tr key={r.id} className={`group hover:bg-slate-50 ${shown === "CANCELED" ? "text-slate-400" : ""}`}>
-                  <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{dmy(r.issuedAt)}</td>
-                  <td className="px-3 py-2.5">
-                    <Badge tone={r.type === "IN" ? "brand" : "slate"}>{invoiceTypeLabel[r.type]}</Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs">{r.number || "—"}</td>
-                  <td className="px-3 py-2.5">
-                    {r.accessKey ? (
-                      <button type="button" onClick={() => copyKey(r.accessKey)} title={`${formatAccessKey(r.accessKey)} (clique para copiar)`} className="font-mono text-xs text-slate-600 hover:text-brand-900">
-                        {copied === r.accessKey ? "copiado ✓" : `${r.accessKey.slice(0, 4)}…${r.accessKey.slice(-6)}`}
+            {rows.map(({ r, shown }) => (
+              <tr
+                key={r.id}
+                onClick={() => openView(r)}
+                onKeyDown={(e) => e.key === "Enter" && openView(r)}
+                tabIndex={0}
+                className={`cursor-pointer hover:bg-brand-50/60 focus:bg-brand-50/60 focus:outline-none ${shown === "CANCELED" ? "text-slate-400" : ""}`}
+              >
+                <td className="hidden whitespace-nowrap px-2 py-3 sm:px-3 tabular-nums sm:table-cell">{dmy(r.issuedAt)}</td>
+                <td className="hidden px-2 py-3 sm:px-3 md:table-cell">
+                  <Badge tone={r.type === "IN" ? "brand" : "slate"}>{invoiceTypeLabel[r.type]}</Badge>
+                </td>
+                <td className="hidden whitespace-nowrap px-2 py-3 sm:px-3 font-mono text-xs md:table-cell">{r.number || "—"}</td>
+                <td className="max-w-[125px] px-2 py-3 sm:max-w-[220px] sm:px-3">
+                  <p className={`truncate font-medium ${shown === "CANCELED" ? "line-through" : ""}`} title={r.recipientName}>
+                    {r.recipientName || "—"}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 lg:hidden">{r.description}</p>
+                </td>
+                <td className="hidden max-w-[200px] px-2 py-3 sm:px-3 lg:table-cell">
+                  <p className="truncate text-slate-600" title={r.description}>{r.description}</p>
+                </td>
+                <td className="whitespace-nowrap px-2 py-3 sm:px-3 text-right font-medium tabular-nums">{brl(r.amount)}</td>
+                <td className={`hidden whitespace-nowrap px-2 py-3 sm:px-3 tabular-nums lg:table-cell ${shown === "OVERDUE" ? "font-medium text-red-600" : ""}`}>
+                  {dmy(r.dueDate)}
+                </td>
+                <td className="px-2 py-3 sm:px-3">
+                  <Badge tone={statusTone[shown]}>{invoiceShownLabel[shown]}</Badge>
+                </td>
+                <td className="hidden px-2 py-3 sm:px-3 md:table-cell" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1">
+                    {shown !== "CANCELED" && (
+                      <button
+                        type="button"
+                        onClick={() => togglePaid(r)}
+                        disabled={pending}
+                        title={r.status === "PAID" ? "Voltar para pendente" : "Marcar como pago"}
+                        className={`rounded p-1.5 disabled:opacity-40 ${r.status === "PAID" ? "bg-emerald-100 text-emerald-700" : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-700"}`}
+                      >
+                        <CheckIcon className="h-4 w-4" />
                       </button>
-                    ) : (
-                      "—"
                     )}
-                  </td>
-                  <td className="max-w-[300px] px-3 py-2.5">
-                    <p className={`truncate font-medium ${shown === "CANCELED" ? "line-through" : ""}`} title={r.description}>{r.description}</p>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium tabular-nums">{brl(r.amount)}</td>
-                  <td className={`whitespace-nowrap px-3 py-2.5 tabular-nums ${shown === "OVERDUE" ? "font-medium text-red-600" : ""}`}>{dmy(r.dueDate)}</td>
-                  <td className="px-3 py-2.5">
-                    <span title={r.paidAt ? `Pago em ${dmy(r.paidAt)}` : undefined}>
-                      <Badge tone={statusTone[shown]}>{invoiceShownLabel[shown]}</Badge>
-                    </span>
-                  </td>
-                  <td className="max-w-[260px] px-3 py-2.5">
-                    <p className="truncate" title={r.senderName}>{r.senderName || "—"}</p>
-                    {r.senderCnpj && <p className="font-mono text-[11px] text-slate-400">{formatCnpj(r.senderCnpj)}</p>}
-                  </td>
-                  <td className="max-w-[260px] px-3 py-2.5">
-                    <p className="truncate" title={r.recipientName}>{r.recipientName || "—"}</p>
-                    {r.recipientCnpj && <p className="font-mono text-[11px] text-slate-400">{formatCnpj(r.recipientCnpj)}</p>}
-                  </td>
-                  <td className="max-w-[180px] truncate px-3 py-2.5 text-slate-600" title={r.projectName}>{r.projectName || "—"}</td>
-                  <td className="sticky right-0 bg-white px-3 py-2.5 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-slate-50">
-                    <div className="flex items-center gap-1">
-                      {shown !== "CANCELED" && (
-                        <button
-                          type="button"
-                          onClick={() => togglePaid(r)}
-                          disabled={pending || editing}
-                          title={r.status === "PAID" ? "Voltar para pendente" : "Marcar como pago"}
-                          className={`rounded p-1.5 disabled:opacity-40 ${r.status === "PAID" ? "bg-emerald-100 text-emerald-700" : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-700"}`}
-                        >
-                          <CheckIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button type="button" onClick={() => startEdit(r)} disabled={pending || editing} title="Editar" className="rounded p-1.5 text-slate-500 hover:bg-brand-50 hover:text-brand-900 disabled:opacity-40">
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button type="button" onClick={() => remove(r)} disabled={pending || editing} title="Excluir" className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40">
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ),
-            )}
+                    <button type="button" onClick={() => openEdit(r)} title="Editar" className="rounded p-1.5 text-slate-500 hover:bg-brand-50 hover:text-brand-900">
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => remove(r)} disabled={pending} title="Excluir" className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40">
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
 
-            {rows.length === 0 && editingId !== "new" && (
+            {rows.length === 0 && (
               <tr>
                 <td colSpan={cols.length + 1} className="px-4 py-12 text-center text-slate-400">
                   {invoices.length === 0
@@ -507,6 +404,47 @@ export default function InvoiceGrid({
         <Stat label="Pendente" value={brl(totals.pending)} tone="text-sun-700" />
         <Stat label="Vencido" value={brl(totals.overdue)} tone="text-red-600" />
       </div>
+
+      {panel && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={() => setPanel(null)}
+            className="absolute inset-0 animate-gtg-page bg-brand-950/40 backdrop-blur-[1px]"
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            className="relative flex h-full w-full max-w-lg animate-gtg-slide flex-col bg-white shadow-2xl"
+          >
+            {panel.mode === "view" && selected ? (
+              <Details
+                r={selected}
+                shown={shownStatus(selected.status, selected.dueDate, today)}
+                copied={copied}
+                pending={pending}
+                onCopy={() => copyKey(selected.accessKey)}
+                onClose={() => setPanel(null)}
+                onEdit={() => openEdit(selected)}
+                onTogglePaid={() => togglePaid(selected)}
+                onDelete={() => remove(selected)}
+              />
+            ) : (
+              <Form
+                isNew={panel.mode === "new"}
+                draft={draft}
+                set={set}
+                projects={projects}
+                error={error}
+                pending={pending}
+                onSave={save}
+                onCancel={() => (panel.mode === "new" ? setPanel(null) : setPanel({ mode: "view", id: panel.id }))}
+              />
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
@@ -517,5 +455,218 @@ function Stat({ label, value, tone = "text-brand-900" }: { label: string; value:
       <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
       <p className={`truncate font-semibold tabular-nums ${tone}`}>{value}</p>
     </div>
+  );
+}
+
+function Item({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="break-words text-sm text-slate-800">{children}</dd>
+    </div>
+  );
+}
+
+function Details({
+  r,
+  shown,
+  copied,
+  pending,
+  onCopy,
+  onClose,
+  onEdit,
+  onTogglePaid,
+  onDelete,
+}: {
+  r: InvoiceRecord;
+  shown: InvoiceShownStatus;
+  copied: boolean;
+  pending: boolean;
+  onCopy: () => void;
+  onClose: () => void;
+  onEdit: () => void;
+  onTogglePaid: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <header className="flex items-start justify-between gap-3 border-b border-l-4 border-slate-200 border-l-sun-400 bg-brand-900 px-5 py-4 text-white">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-white/70">
+            Nota fiscal · {invoiceTypeLabel[r.type]}
+          </p>
+          <h2 className="truncate text-lg font-semibold">{r.number ? `Nº ${r.number}` : "Sem número"}</h2>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-white/10">
+          <CloseIcon />
+        </button>
+      </header>
+
+      <div className="flex-1 space-y-6 overflow-y-auto p-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">Valor</p>
+            <p className="text-2xl font-semibold tabular-nums text-brand-900">{brl(r.amount)}</p>
+          </div>
+          <Badge tone={statusTone[shown]}>{invoiceShownLabel[shown]}</Badge>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-4">
+          <Item label="Emissão">{dmy(r.issuedAt)}</Item>
+          <Item label="Vencimento">
+            <span className={shown === "OVERDUE" ? "font-medium text-red-600" : ""}>{dmy(r.dueDate)}</span>
+          </Item>
+          {r.status === "PAID" && <Item label="Pago em">{dmy(r.paidAt)}</Item>}
+          <Item label="Obra">{r.projectName || "—"}</Item>
+        </dl>
+
+        <dl className="space-y-4">
+          <Item label="Descrição">{r.description}</Item>
+          <Item label="Chave de acesso">
+            {r.accessKey ? (
+              <span className="flex items-start gap-2">
+                <span className="break-all font-mono text-xs">{formatAccessKey(r.accessKey)}</span>
+                <button type="button" onClick={onCopy} className="shrink-0 rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50">
+                  {copied ? "Copiado ✓" : "Copiar"}
+                </button>
+              </span>
+            ) : (
+              "—"
+            )}
+          </Item>
+        </dl>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1 rounded-lg bg-slate-50 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Remetente</p>
+            <p className="text-sm font-medium">{r.senderName || "—"}</p>
+            <p className="font-mono text-xs text-slate-500">{formatCnpj(r.senderCnpj) || "—"}</p>
+          </div>
+          <div className="space-y-1 rounded-lg bg-slate-50 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Destinatário</p>
+            <p className="text-sm font-medium">{r.recipientName || "—"}</p>
+            <p className="font-mono text-xs text-slate-500">{formatCnpj(r.recipientCnpj) || "—"}</p>
+          </div>
+        </div>
+      </div>
+
+      <footer className="flex flex-wrap items-center gap-2 border-t border-slate-200 p-4">
+        <button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800">
+          <PencilIcon className="h-4 w-4" /> Editar
+        </button>
+        {shown !== "CANCELED" && (
+          <button type="button" onClick={onTogglePaid} disabled={pending} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
+            <CheckIcon className="h-4 w-4" /> {r.status === "PAID" ? "Voltar para pendente" : "Marcar como pago"}
+          </button>
+        )}
+        <button type="button" onClick={onDelete} disabled={pending} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60">
+          <TrashIcon className="h-4 w-4" /> Excluir
+        </button>
+      </footer>
+    </>
+  );
+}
+
+function Form({
+  isNew,
+  draft,
+  set,
+  projects,
+  error,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  isNew: boolean;
+  draft: Draft;
+  set: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
+  projects: ProjectOption[];
+  error: string;
+  pending: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const label = (text: string, input: React.ReactNode, span2 = false) => (
+    <label className={`block space-y-1 ${span2 ? "col-span-2" : ""}`}>
+      <span className="text-xs font-medium text-slate-600">{text}</span>
+      {input}
+    </label>
+  );
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave();
+      }}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <header className="flex items-center justify-between gap-3 border-l-4 border-sun-400 bg-brand-900 px-5 py-4 text-white">
+        <h2 className="text-lg font-semibold">{isNew ? "Nova nota fiscal" : "Editar nota fiscal"}</h2>
+        <button type="button" onClick={onCancel} aria-label="Cancelar" className="rounded-lg p-1.5 hover:bg-white/10">
+          <CloseIcon />
+        </button>
+      </header>
+
+      <div className="grid flex-1 grid-cols-2 content-start gap-x-3 gap-y-4 overflow-y-auto p-5">
+        {label("Tipo", (
+          <select value={draft.type} onChange={(e) => set("type", e.target.value)} className={field}>
+            <option value="IN">Entrada (nota emitida, a receber)</option>
+            <option value="OUT">Saída (despesa, a pagar)</option>
+          </select>
+        ), true)}
+        {label("Nº da nota", <input value={draft.number} onChange={(e) => set("number", e.target.value)} className={field} />)}
+        {label("Data de emissão", <input type="date" value={draft.issuedAt} onChange={(e) => set("issuedAt", e.target.value)} className={field} />)}
+        {label("Valor (R$)", <input value={draft.amount} onChange={(e) => set("amount", e.target.value)} inputMode="decimal" placeholder="0,00" className={field} />)}
+        {label("Vencimento", <input type="date" value={draft.dueDate} onChange={(e) => set("dueDate", e.target.value)} className={field} />)}
+        {label("Status", (
+          <select value={draft.status} onChange={(e) => set("status", e.target.value)} className={field}>
+            <option value="PENDING">Pendente</option>
+            <option value="PAID">Pago</option>
+            <option value="CANCELED">Cancelada</option>
+          </select>
+        ))}
+        {draft.status === "PAID" &&
+          label("Data do pagamento", <input type="date" value={draft.paidAt} onChange={(e) => set("paidAt", e.target.value)} className={field} />)}
+        {label("Descrição (breve)", <input value={draft.description} onChange={(e) => set("description", e.target.value)} className={field} />, true)}
+        {label("Chave de acesso", (
+          <input
+            value={formatAccessKey(draft.accessKey)}
+            onChange={(e) => set("accessKey", normalizeAccessKey(e.target.value))}
+            placeholder="Chave ou código de verificação"
+            className={`${field} font-mono text-xs`}
+          />
+        ), true)}
+
+        <p className="col-span-2 border-t border-slate-100 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Remetente</p>
+        {label("Razão social", <input value={draft.senderName} onChange={(e) => set("senderName", e.target.value)} className={field} />)}
+        {label("CNPJ/CPF", <input value={draft.senderCnpj} onChange={(e) => set("senderCnpj", formatCnpj(e.target.value))} className={`${field} font-mono`} />)}
+
+        <p className="col-span-2 border-t border-slate-100 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Destinatário</p>
+        {label("Razão social", <input value={draft.recipientName} onChange={(e) => set("recipientName", e.target.value)} className={field} />)}
+        {label("CNPJ/CPF", <input value={draft.recipientCnpj} onChange={(e) => set("recipientCnpj", formatCnpj(e.target.value))} className={`${field} font-mono`} />)}
+
+        {label("Obra (opcional)", (
+          <select value={draft.projectId} onChange={(e) => set("projectId", e.target.value)} className={field}>
+            <option value="">Sem obra</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        ), true)}
+      </div>
+
+      <footer className="space-y-2 border-t border-slate-200 p-4">
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} disabled={pending} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button type="submit" disabled={pending} className="rounded-lg bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60">
+            {pending ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </footer>
+    </form>
   );
 }
