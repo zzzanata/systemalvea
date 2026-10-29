@@ -140,3 +140,58 @@ export async function deleteInvoice(id: string): Promise<MutationResult> {
   refresh();
   return { success: true };
 }
+
+export type ImportResult =
+  | { error: string }
+  | { success: true; created: number; skipped: number; failed: { number: string; error: string }[] };
+
+/** Importa várias notas de uma vez (lidas dos XMLs). Notas que já existem são puladas. */
+export async function importInvoices(inputs: InvoiceInput[]): Promise<ImportResult> {
+  await requireAdmin();
+  if (!Array.isArray(inputs) || inputs.length === 0) return { error: "Nenhuma nota para importar." };
+  if (inputs.length > 200) return { error: "Importe no máximo 200 notas por vez." };
+
+  let created = 0;
+  let skipped = 0;
+  const failed: { number: string; error: string }[] = [];
+
+  for (const input of inputs) {
+    const parsed = parseInput(input);
+    if ("error" in parsed) {
+      failed.push({ number: input.number || "?", error: parsed.error });
+      continue;
+    }
+    const d = parsed.data as {
+      accessKey: string | null;
+      number: string | null;
+      senderCnpj: string | null;
+    };
+
+    try {
+      // Duplicada: mesma chave de acesso, ou (sem chave) mesmo número + mesmo emitente.
+      const exists = d.accessKey
+        ? await prisma.invoice.findUnique({ where: { accessKey: d.accessKey }, select: { id: true } })
+        : d.number
+          ? await prisma.invoice.findFirst({
+              where: { number: d.number, senderCnpj: d.senderCnpj },
+              select: { id: true },
+            })
+          : null;
+      if (exists) {
+        skipped++;
+        continue;
+      }
+      await prisma.invoice.create({ data: parsed.data as never });
+      created++;
+    } catch (e) {
+      if ((e as { code?: string }).code === "P2002") skipped++;
+      else {
+        console.error(e);
+        failed.push({ number: input.number || "?", error: "Erro ao salvar." });
+      }
+    }
+  }
+
+  if (created > 0) refresh();
+  return { success: true, created, skipped, failed };
+}

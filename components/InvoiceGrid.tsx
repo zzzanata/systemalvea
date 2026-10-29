@@ -9,6 +9,7 @@ import {
   type InvoiceInput,
 } from "@/app/notas-fiscais/actions";
 import Badge, { type BadgeTone } from "@/components/Badge";
+import InvoiceImport from "@/components/InvoiceImport";
 import { CheckIcon, CloseIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
 import { formatAccessKey, formatCnpj, normalizeAccessKey, shownStatus } from "@/lib/invoices";
 import {
@@ -92,7 +93,7 @@ function csvCell(v: string | number) {
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-type Panel = { mode: "view" | "edit"; id: string } | { mode: "new" } | null;
+type Panel = { mode: "view" | "edit"; id: string } | { mode: "new" } | { mode: "import" } | null;
 
 export default function InvoiceGrid({
   invoices,
@@ -103,6 +104,16 @@ export default function InvoiceGrid({
   projects: ProjectOption[];
   today: string;
 }) {
+  // CNPJ da empresa: o que mais aparece como emitente nas entradas e como destinatário nas saídas.
+  const companyCnpj = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const i of invoices) {
+      const c = i.type === "IN" ? i.senderCnpj : i.recipientCnpj;
+      if (c) count.set(c, (count.get(c) ?? 0) + 1);
+    }
+    return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  }, [invoices]);
+  const existingKeys = useMemo(() => invoices.map((i) => i.accessKey).filter(Boolean), [invoices]);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -114,7 +125,7 @@ export default function InvoiceGrid({
   const [pending, startTransition] = useTransition();
 
   const selected =
-    panel && panel.mode !== "new" ? (invoices.find((i) => i.id === panel.id) ?? null) : null;
+    panel && panel.mode !== "new" && panel.mode !== "import" ? (invoices.find((i) => i.id === panel.id) ?? null) : null;
 
   // Esc fecha o painel; se a nota foi excluída (ou sumiu), o painel fecha sozinho.
   useEffect(() => {
@@ -124,7 +135,7 @@ export default function InvoiceGrid({
     return () => window.removeEventListener("keydown", onKey);
   }, [panel]);
   useEffect(() => {
-    if (panel && panel.mode !== "new" && !selected) setPanel(null);
+    if (panel && panel.mode !== "new" && panel.mode !== "import" && !selected) setPanel(null);
   }, [panel, selected]);
 
   const rows = useMemo(() => {
@@ -217,7 +228,7 @@ export default function InvoiceGrid({
   function save() {
     setError("");
     const current = panel;
-    if (!current) return;
+    if (!current || current.mode === "import") return;
     startTransition(async () => {
       const result =
         current.mode === "new" ? await createInvoice(draft) : await updateInvoice(current.id, draft);
@@ -305,6 +316,9 @@ export default function InvoiceGrid({
         </select>
         <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" title="Baixa as linhas filtradas para abrir no Excel">
           <DownloadIcon className="h-4 w-4" /> Exportar
+        </button>
+        <button type="button" onClick={() => setPanel({ mode: "import" })} className="inline-flex items-center gap-1.5 rounded-lg border border-brand-900 bg-white px-3 py-2 text-sm font-medium text-brand-900 hover:bg-brand-50">
+          <DownloadIcon className="h-4 w-4 rotate-180" /> Importar NF
         </button>
         <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800">
           <PlusIcon className="h-4 w-4" /> Nova nota
@@ -418,7 +432,9 @@ export default function InvoiceGrid({
             aria-modal="true"
             className="relative flex h-full w-full max-w-lg animate-gtg-slide flex-col bg-white shadow-2xl"
           >
-            {panel.mode === "view" && selected ? (
+            {panel.mode === "import" ? (
+              <InvoiceImport companyCnpj={companyCnpj} existingKeys={existingKeys} onClose={() => setPanel(null)} />
+            ) : panel.mode === "view" && selected ? (
               <Details
                 r={selected}
                 shown={shownStatus(selected.status, selected.dueDate, today)}
@@ -439,7 +455,7 @@ export default function InvoiceGrid({
                 error={error}
                 pending={pending}
                 onSave={save}
-                onCancel={() => (panel.mode === "new" ? setPanel(null) : setPanel({ mode: "view", id: panel.id }))}
+                onCancel={() => (panel.mode === "new" ? setPanel(null) : setPanel({ mode: "view", id: (panel as { id: string }).id }))}
               />
             )}
           </aside>
