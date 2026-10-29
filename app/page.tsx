@@ -2,6 +2,7 @@ import Link from "next/link";
 import Badge from "@/components/Badge";
 import FinanceChart from "@/components/FinanceChart";
 import InvoiceRings from "@/components/InvoiceRings";
+import { ArrowsIcon, BoxIcon, FileIcon, SunIcon, TrendIcon } from "@/components/Icons";
 import Panel from "@/components/Panel";
 import ProgressRing from "@/components/ProgressRing";
 import StatCard from "@/components/StatCard";
@@ -28,18 +29,21 @@ function ProjectsPanel({
   projects,
   wide,
   isAdmin,
+  index,
 }: {
   projects: ProjectSummary[];
   wide: boolean;
   isAdmin: boolean;
+  index: number;
 }) {
   // Em tela cheia (operador) cabem mais anéis por linha do que na coluna do meio de 3 painéis.
   const gridCls = wide
     ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-    : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3";
+    : "grid-cols-2 sm:grid-cols-3";
 
   return (
     <Panel
+      index={index}
       title="Evolução das obras"
       action={
         <Link href="/obras" className={panelLink}>
@@ -66,9 +70,9 @@ function ProjectsPanel({
               <Link
                 key={p.id}
                 href={`/obras/${p.id}`}
-                className="flex flex-col items-center gap-2 rounded-lg p-2 text-center transition hover:bg-slate-50"
+                className="group flex min-h-[9.5rem] flex-col items-center justify-start gap-2 rounded-xl border border-transparent p-2 text-center transition duration-300 hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50/60"
               >
-                <ProgressRing percent={p.percent} className="h-24 w-24" />
+                <ProgressRing percent={p.percent} className="h-20 w-20 transition-transform duration-300 group-hover:scale-105" />
                 <div className="w-full min-w-0">
                   <p className="truncate text-sm font-medium">{p.name}</p>
                   <p className="truncate text-xs text-slate-500">{p.location || "—"}</p>
@@ -83,16 +87,22 @@ function ProjectsPanel({
               O que falta fazer
             </h3>
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-              {projects.map((p) => (
+              {projects.slice(0, 3).map((p) => (
                 <li key={p.id}>
-                  <Link href={`/obras/${p.id}`} className="block px-3 py-2.5 hover:bg-slate-50">
+                  <Link href={`/obras/${p.id}`} className="block px-3 py-2.5 transition hover:bg-brand-50/60">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium">{p.name}</span>
                       <span className="shrink-0 text-xs text-slate-400">
                         {p.done}/{p.total}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-brand-100">
+                      <div
+                        className={`h-full origin-left animate-gtg-fill rounded-full ${p.percent >= 100 ? "bg-emerald-500" : p.percent >= 35 ? "bg-brand-900" : "bg-sun-400"}`}
+                        style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 truncate text-xs text-slate-500">
                       {p.percent >= 100
                         ? "Obra concluída"
                         : p.next.length > 0
@@ -103,6 +113,11 @@ function ProjectsPanel({
                 </li>
               ))}
             </ul>
+            {projects.length > 3 && (
+              <Link href="/obras" className="mt-2 block text-center text-xs font-medium text-brand-700 hover:text-brand-900">
+                + {projects.length - 3} obra(s)
+              </Link>
+            )}
           </div>
         </div>
       )}
@@ -110,13 +125,10 @@ function ProjectsPanel({
   );
 }
 
-function FinancePanel({ data }: { data: FinancePoint[] }) {
-  const revenue = data.reduce((s, d) => s + d.revenue, 0);
-  const cost = data.reduce((s, d) => s + d.cost, 0);
-  const result = revenue - cost;
-
+function FinancePanel({ data, index }: { data: FinancePoint[]; index: number }) {
   return (
     <Panel
+      index={index}
       title="Faturamento e custos"
       action={
         <Link href="/financeiro" className={panelLink}>
@@ -125,23 +137,6 @@ function FinancePanel({ data }: { data: FinancePoint[] }) {
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Faturamento</p>
-            <p className="text-sm font-semibold text-emerald-600">{brl(revenue)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Custos</p>
-            <p className="text-sm font-semibold text-red-600">{brl(cost)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">Resultado</p>
-            <p className={`text-sm font-semibold ${result >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-              {brl(result)}
-            </p>
-          </div>
-        </div>
-
         <FinanceChart data={data} />
 
         <div className="flex items-center justify-center gap-5 text-xs text-slate-500">
@@ -153,14 +148,30 @@ function FinancePanel({ data }: { data: FinancePoint[] }) {
           </span>
           <span>últimos {data.length} meses</span>
         </div>
+
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Resultado por mês</h3>
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+            {[...data].reverse().map((d) => {
+              const r = d.revenue - d.cost;
+              return (
+                <li key={d.label} className="flex items-center justify-between gap-3 px-3 py-2 text-sm transition hover:bg-brand-50/60">
+                  <span className="text-slate-600">{d.label}</span>
+                  <span className={`font-semibold tabular-nums ${r >= 0 ? "text-emerald-600" : "text-red-600"}`}>{brl(r)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </Panel>
   );
 }
 
-function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
+function InvoicesPanel({ summary, index }: { summary: InvoiceSummary; index: number }) {
   return (
     <Panel
+      index={index}
       title="Notas fiscais"
       action={
         <Link href="/notas-fiscais" className={panelLink}>
@@ -181,8 +192,8 @@ function InvoicesPanel({ summary }: { summary: InvoiceSummary }) {
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-              {summary.next.map((n) => (
-                <li key={n.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              {summary.next.slice(0, 5).map((n) => (
+                <li key={n.id} className="flex items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-brand-50/60">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{n.description}</p>
                     <p className="truncate text-xs text-slate-500">
@@ -220,33 +231,60 @@ export default async function DashboardPage() {
   const lowItems = products.filter((p) => stockStatus(p) === "low");
   const outItems = products.filter((p) => stockStatus(p) === "out");
 
+  const revenue = finance ? finance.reduce((t, d) => t + d.revenue, 0) : 0;
+  const cost = finance ? finance.reduce((t, d) => t + d.cost, 0) : 0;
+  const result = revenue - cost;
+  const openAmount = invoices ? invoices.pendingAmount + invoices.overdueAmount : 0;
+  const openCount = invoices ? invoices.pendingCount + invoices.overdueCount : 0;
+
+  const grid4 = "grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-4";
+  const sectionTitle = "text-sm font-semibold uppercase tracking-wide text-slate-500";
+  const icon = "h-4.5 w-4.5";
+
   return (
     <div className="space-y-8">
-      <header>
+      <header className="animate-gtg-rise">
         <h1 className="text-2xl font-semibold tracking-tight">Painel</h1>
         <p className="text-sm text-slate-500">Andamento das obras, financeiro e estoque</p>
       </header>
 
-      <div className="grid items-start gap-6 xl:grid-cols-3">
+      {finance && invoices && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className={`${sectionTitle} truncate`}>Financeiro · 6 meses</h2>
+            <Link href="/financeiro" className="shrink-0 whitespace-nowrap text-sm text-slate-500 hover:text-slate-900">
+              Movimentações
+            </Link>
+          </div>
+          <div className={grid4}>
+            <StatCard index={0} label="Faturamento" value={revenue} kind="brl" tone="good" icon={<TrendIcon className={icon} />} hint="entradas" />
+            <StatCard index={1} label="Custos" value={cost} kind="brl" tone="bad" icon={<ArrowsIcon className={icon} />} hint="saídas" />
+            <StatCard index={2} label="Resultado" value={result} kind="brl" tone={result >= 0 ? "good" : "bad"} icon={<TrendIcon className={icon} />} hint={result >= 0 ? "no azul" : "no vermelho"} />
+            <StatCard index={3} label="Notas em aberto" value={openAmount} kind="brl" tone={invoices.overdueCount > 0 ? "warn" : "default"} icon={<FileIcon className={icon} />} hint={`${openCount} nota(s)${invoices.overdueCount ? ` · ${invoices.overdueCount} vencida(s)` : ""}`} />
+          </div>
+        </section>
+      )}
+
+      <div className="grid items-stretch gap-6 xl:grid-cols-3">
         <div className={finance && invoices ? "" : "xl:col-span-3"}>
-          <ProjectsPanel projects={projects} wide={!(finance && invoices)} isAdmin={isAdmin} />
+          <ProjectsPanel index={0} projects={projects} wide={!(finance && invoices)} isAdmin={isAdmin} />
         </div>
-        {finance && <FinancePanel data={finance} />}
-        {invoices && <InvoicesPanel summary={invoices} />}
+        {finance && <FinancePanel index={1} data={finance} />}
+        {invoices && <InvoicesPanel index={2} summary={invoices} />}
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Estoque</h2>
+          <h2 className={sectionTitle}>Estoque</h2>
           <Link href="/products" className="text-sm text-slate-500 hover:text-slate-900">
             Ver produtos
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Produtos ativos" value={products.length} />
-          <StatCard label="Valor em estoque" value={brl(stockValue)} hint="valor unitário × quantidade" />
-          <StatCard label="Estoque baixo" value={lowItems.length} tone="warn" />
-          <StatCard label="Em falta" value={outItems.length} tone="danger" />
+        <div className={grid4}>
+          <StatCard index={0} label="Produtos ativos" value={products.length} icon={<BoxIcon className={icon} />} hint="cadastrados" />
+          <StatCard index={1} label="Valor em estoque" value={stockValue} kind="brl" icon={<SunIcon className={icon} />} hint="valor unitário × quantidade" />
+          <StatCard index={2} label="Estoque baixo" value={lowItems.length} tone="warn" icon={<ArrowsIcon className={icon} />} hint="abaixo do mínimo" />
+          <StatCard index={3} label="Em falta" value={outItems.length} tone="danger" icon={<BoxIcon className={icon} />} hint="sem estoque" />
         </div>
       </section>
     </div>
