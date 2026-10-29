@@ -43,11 +43,9 @@ function parseInput(input: InvoiceInput): Parsed {
   if (input.type !== "IN" && input.type !== "OUT") return { error: "Escolha o tipo: entrada ou saída." };
   if (!description) return { error: "Informe a descrição." };
   if (amount === null || amount <= 0) return { error: "Informe um valor maior que zero." };
-  if (accessKey && accessKey.length !== 44) {
-    return { error: "A chave de acesso tem 44 caracteres." };
-  }
-  if ((senderCnpj && senderCnpj.length !== 14) || (recipientCnpj && recipientCnpj.length !== 14)) {
-    return { error: "O CNPJ tem 14 caracteres." };
+  const badDoc = (d: string) => d !== "" && d.length !== 11 && d.length !== 14;
+  if (badDoc(senderCnpj) || badDoc(recipientCnpj)) {
+    return { error: "CNPJ tem 14 caracteres e CPF tem 11." };
   }
   if (!["PENDING", "PAID", "CANCELED"].includes(input.status)) return { error: "Status inválido." };
 

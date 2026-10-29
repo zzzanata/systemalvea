@@ -189,8 +189,8 @@ enum InvoiceStatus {
 }
 
 enum InvoiceType {
-  IN  // entrada: nota de compra recebida (a pagar)
-  OUT // saída: nota emitida pela empresa (a receber)
+  IN  // entrada: nota emitida pela empresa (dinheiro a receber)
+  OUT // saída: nota de despesa (a pagar)
 }
 
 // Faturamento (REVENUE) ou custo (COST).

@@ -64,7 +64,7 @@ type Draft = InvoiceInput;
 
 function emptyDraft(today: string): Draft {
   return {
-    type: "OUT",
+    type: "IN",
     number: "",
     accessKey: "",
     description: "",
@@ -256,8 +256,8 @@ export default function InvoiceGrid({
   function exportCsv() {
     const head = [
       "Emissão", "Tipo", "Nº da nota", "Chave de acesso", "Descrição", "Valor", "Vencimento",
-      "Status", "Data do pagamento", "Remetente", "CNPJ remetente", "Destinatário",
-      "CNPJ destinatário", "Obra",
+      "Status", "Data do pagamento", "Remetente", "CNPJ/CPF remetente", "Destinatário",
+      "CNPJ/CPF destinatário", "Obra",
     ];
     const lines = rows.map(({ r, shown }) =>
       [
@@ -298,8 +298,8 @@ export default function InvoiceGrid({
           </td>
           <td className="px-2 py-2">
             <select value={draft.type} onChange={(e) => set("type", e.target.value)} className={cell} aria-label="Tipo">
-              <option value="OUT">Saída</option>
               <option value="IN">Entrada</option>
+              <option value="OUT">Saída</option>
             </select>
           </td>
           <td className="px-2 py-2">
@@ -310,10 +310,9 @@ export default function InvoiceGrid({
               value={formatAccessKey(draft.accessKey)}
               onChange={(e) => set("accessKey", normalizeAccessKey(e.target.value))}
               className={`${cell} font-mono`}
-              placeholder="44 dígitos"
+              placeholder="Chave ou código"
               aria-label="Chave de acesso"
             />
-            <span className="block text-[10px] text-slate-400">{normalizeAccessKey(draft.accessKey).length}/44</span>
           </td>
           <td className="px-2 py-2">
             <input value={draft.description} onChange={(e) => set("description", e.target.value)} className={cell} placeholder="Descrição breve" aria-label="Descrição" autoFocus />
@@ -336,11 +335,11 @@ export default function InvoiceGrid({
           </td>
           <td className="space-y-1 px-2 py-2">
             <input value={draft.senderName} onChange={(e) => set("senderName", e.target.value)} className={cell} placeholder="Razão social" aria-label="Razão social do remetente" />
-            <input value={draft.senderCnpj} onChange={(e) => set("senderCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ" aria-label="CNPJ do remetente" />
+            <input value={draft.senderCnpj} onChange={(e) => set("senderCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ/CPF" aria-label="CNPJ/CPF do remetente" />
           </td>
           <td className="space-y-1 px-2 py-2">
             <input value={draft.recipientName} onChange={(e) => set("recipientName", e.target.value)} className={cell} placeholder="Razão social" aria-label="Razão social do destinatário" />
-            <input value={draft.recipientCnpj} onChange={(e) => set("recipientCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ" aria-label="CNPJ do destinatário" />
+            <input value={draft.recipientCnpj} onChange={(e) => set("recipientCnpj", formatCnpj(e.target.value))} className={`${cell} font-mono`} placeholder="CNPJ/CPF" aria-label="CNPJ/CPF do destinatário" />
           </td>
           <td className="px-2 py-2">
             <select value={draft.projectId} onChange={(e) => set("projectId", e.target.value)} className={cell} aria-label="Obra">
@@ -378,7 +377,7 @@ export default function InvoiceGrid({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por descrição, nº, chave, CNPJ, razão social..."
+          placeholder="Buscar por descrição, nº, chave, CNPJ/CPF, razão social..."
           className={`${toolbarInput} min-w-0 flex-1 basis-64`}
         />
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={toolbarInput} aria-label="Filtrar por tipo">

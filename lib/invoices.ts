@@ -18,11 +18,19 @@ const clean = (v: string, max: number) =>
   v.replace(/[^0-9a-zA-Z]/g, "").toUpperCase().slice(0, max);
 
 export const normalizeCnpj = (v: string) => clean(v, 14);
-export const normalizeAccessKey = (v: string) => clean(v, 44);
+// NF-e tem 44 caracteres; NFS-e (prefeituras) usa códigos de verificação de outros tamanhos.
+export const normalizeAccessKey = (v: string) => clean(v, 60);
 
-/** 12345678000190 -> 12.345.678/0001-90 (também enquanto digita). */
+/** CPF (11 dígitos) ou CNPJ (14), com máscara também enquanto digita. */
 export function formatCnpj(v: string): string {
   const d = normalizeCnpj(v);
+  if (d.length <= 11 && /^\d*$/.test(d)) {
+    let c = d.slice(0, 3);
+    if (d.length > 3) c += "." + d.slice(3, 6);
+    if (d.length > 6) c += "." + d.slice(6, 9);
+    if (d.length > 9) c += "-" + d.slice(9, 11);
+    return c;
+  }
   let out = d.slice(0, 2);
   if (d.length > 2) out += "." + d.slice(2, 5);
   if (d.length > 5) out += "." + d.slice(5, 8);
@@ -57,9 +65,10 @@ export function summarizeInvoices(records: InvoiceRecord[], today: string): Invo
 
   return {
     groups: [
-      group("all", "Todas", "pagas", active),
-      group("out", "Saídas", "recebidas", active.filter((r) => r.type === "OUT")),
-      group("in", "Entradas", "pagas", active.filter((r) => r.type === "IN")),
+      group("all", "Todas", "quitadas", active),
+      // Entrada = nota emitida pela empresa (dinheiro a receber); Saída = nota de despesa (a pagar).
+      group("in", "Entradas", "recebidas", active.filter((r) => r.type === "IN")),
+      group("out", "Saídas", "pagas", active.filter((r) => r.type === "OUT")),
     ],
     paidAmount: sum(active.filter((r) => r.status === "PAID")),
     paidCount: active.length - open.length,
