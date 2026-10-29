@@ -6,11 +6,13 @@ import { CloseIcon, DownloadIcon } from "@/components/Icons";
 import Badge from "@/components/Badge";
 import { formatCnpj, normalizeAccessKey, normalizeCnpj } from "@/lib/invoices";
 import { parseNotaXml, type ParsedNota } from "@/lib/nfe";
+import { parseNotaPdf } from "@/lib/nfePdf";
 import { brl } from "@/lib/types";
 
 type Row = {
   file: string;
   nota?: ParsedNota;
+  fromPdf?: boolean;
   error?: string;
   duplicate?: boolean;
   type: "IN" | "OUT";
@@ -53,15 +55,17 @@ export default function InvoiceImport({
     setResult("");
     const next: Row[] = [];
     for (const f of Array.from(files)) {
-      if (!/\.xml$/i.test(f.name)) {
-        next.push({ file: f.name, error: "Envie o arquivo .xml da nota (não o PDF).", type: "OUT", autoType: false });
+      const isPdf = /\.pdf$/i.test(f.name);
+      if (!isPdf && !/\.xml$/i.test(f.name)) {
+        next.push({ file: f.name, error: "Envie o arquivo da nota em XML ou PDF.", type: "OUT", autoType: false });
         continue;
       }
       try {
-        const nota = parseNotaXml(await f.text());
+        const nota = isPdf ? await parseNotaPdf(await f.arrayBuffer()) : parseNotaXml(await f.text());
+        if (!nota.amount || Number(nota.amount) <= 0) throw new Error("Não consegui ler o valor da nota. Use o XML.");
         const { type, auto } = detect(nota, myCnpj, defaultType);
         const key = normalizeAccessKey(nota.accessKey);
-        next.push({ file: f.name, nota, type, autoType: auto, duplicate: key ? keys.has(key) : false });
+        next.push({ file: f.name, nota, fromPdf: isPdf, type, autoType: auto, duplicate: key ? keys.has(key) : false });
       } catch (e) {
         next.push({ file: f.name, error: (e as Error).message, type: "OUT", autoType: false });
       }
@@ -138,7 +142,7 @@ export default function InvoiceImport({
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
         <div className="space-y-1.5 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
           <p>
-            Envie o <strong>arquivo XML</strong> da nota (um ou vários). O sistema lê número, chave de acesso,
+            Envie o <strong>XML</strong> (mais preciso) ou o <strong>PDF</strong> (DANFE) da nota, um ou vários. O sistema lê número, chave de acesso,
             valor, emissão, vencimento, emitente e destinatário e cadastra tudo nas notas fiscais.
           </p>
           <p className="text-xs text-slate-500">
@@ -182,7 +186,7 @@ export default function InvoiceImport({
         <input
           ref={input}
           type="file"
-          accept=".xml,text/xml,application/xml"
+          accept=".xml,.pdf,text/xml,application/xml,application/pdf"
           multiple
           className="hidden"
           onChange={(e) => readFiles(e.target.files)}
@@ -192,7 +196,7 @@ export default function InvoiceImport({
           onClick={() => input.current?.click()}
           className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 px-4 py-6 text-sm font-medium text-brand-900 hover:bg-brand-50"
         >
-          <DownloadIcon className="h-5 w-5 rotate-180" /> Escolher arquivos XML
+          <DownloadIcon className="h-5 w-5 rotate-180" /> Escolher arquivos XML ou PDF
         </button>
 
         {result && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{result}</p>}
@@ -230,6 +234,7 @@ export default function InvoiceImport({
                           <option value="OUT">Saída</option>
                         </select>
                       )}
+                      {r.fromPdf && <span className="text-[11px] text-amber-600">lido do PDF, confira os dados</span>}
                       {!r.duplicate && r.autoType && <span className="text-[11px] text-slate-400">detectado pelo CNPJ</span>}
                       <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="ml-auto text-xs text-slate-400 hover:text-red-600">
                         remover
