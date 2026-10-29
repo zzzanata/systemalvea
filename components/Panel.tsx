@@ -21,7 +21,7 @@ export default function Panel({
         <h2 className="text-sm font-semibold tracking-wide">{title}</h2>
         {action}
       </header>
-      <div className="flex-1 p-4">{children}</div>
+      <div className="flex-1 p-3.5">{children}</div>
     </section>
   );
 }

@@ -33,6 +33,7 @@
   --animate-gtg-grow: gtg-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-gtg-rise: gtg-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-gtg-sheen: gtg-sheen 1.1s ease-out both;
+  --animate-gtg-draw: gtg-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-gtg-fill: gtg-fill 1s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
 
   /* Entrada de página: sobe 8px enquanto aparece. */
@@ -73,6 +74,11 @@
     from { transform: translateX(0) skewX(-12deg); opacity: 0; }
     20% { opacity: 1; }
     to { transform: translateX(520%) skewX(-12deg); opacity: 0; }
+  }
+  /* Linha do gráfico sendo desenhada (pathLength=1). */
+  @keyframes gtg-draw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
   }
   @keyframes gtg-fade {
     from { opacity: 0; }

@@ -35,7 +35,7 @@ export default function StatCard({
   return (
     <div
       style={{ animationDelay: `${index * 70}ms` }}
-      className="group relative h-[8.25rem] min-w-0 animate-gtg-rise overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/10"
+      className="group relative h-[7.25rem] min-w-0 animate-gtg-rise overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/10"
     >
       {/* Faixa de cor no topo, que "enche" ao entrar. */}
       <span className={`absolute inset-x-0 top-0 h-1 origin-left animate-gtg-fill bg-gradient-to-r ${t.bar}`} style={{ animationDelay: `${index * 70 + 150}ms` }} />

@@ -66,22 +66,25 @@ function ProjectsPanel({
       ) : (
         <div className="space-y-6">
           <div className={`grid gap-3 ${gridCls}`}>
-            {projects.map((p) => (
+            {(wide ? projects : projects.slice(0, 6)).map((p) => (
               <Link
                 key={p.id}
                 href={`/obras/${p.id}`}
-                className="group flex min-h-[9.5rem] flex-col items-center justify-start gap-2 rounded-xl border border-transparent p-2 text-center transition duration-300 hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50/60"
+                className="group flex min-h-[8.5rem] flex-col items-center justify-start gap-2 rounded-xl border border-transparent p-2 text-center transition duration-300 hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50/60"
               >
                 <ProgressRing percent={p.percent} className="h-20 w-20 transition-transform duration-300 group-hover:scale-105" />
                 <div className="w-full min-w-0">
                   <p className="truncate text-sm font-medium">{p.name}</p>
-                  <p className="truncate text-xs text-slate-500">{p.location || "—"}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {p.total > 0 ? `${p.done}/${p.total} tarefas` : p.location || "—"}
+                  </p>
                 </div>
                 {p.late && <Badge tone="rose">Atrasada</Badge>}
               </Link>
             ))}
           </div>
 
+          {wide ? (
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               O que falta fazer
@@ -119,6 +122,11 @@ function ProjectsPanel({
               </Link>
             )}
           </div>
+          ) : projects.length > 6 ? (
+            <Link href="/obras" className="block text-center text-xs font-medium text-brand-700 hover:text-brand-900">
+              + {projects.length - 6} obra(s)
+            </Link>
+          ) : null}
         </div>
       )}
     </Panel>
@@ -138,31 +146,6 @@ function FinancePanel({ data, index }: { data: FinancePoint[]; index: number }) 
     >
       <div className="space-y-4">
         <FinanceChart data={data} />
-
-        <div className="flex items-center justify-center gap-5 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Faturamento
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-red-500" /> Custos
-          </span>
-          <span>últimos {data.length} meses</span>
-        </div>
-
-        <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Resultado por mês</h3>
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-            {[...data].reverse().map((d) => {
-              const r = d.revenue - d.cost;
-              return (
-                <li key={d.label} className="flex items-center justify-between gap-3 px-3 py-2 text-sm transition hover:bg-brand-50/60">
-                  <span className="text-slate-600">{d.label}</span>
-                  <span className={`font-semibold tabular-nums ${r >= 0 ? "text-emerald-600" : "text-red-600"}`}>{brl(r)}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
       </div>
     </Panel>
   );
@@ -192,7 +175,7 @@ function InvoicesPanel({ summary, index }: { summary: InvoiceSummary; index: num
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-              {summary.next.slice(0, 5).map((n) => (
+              {summary.next.slice(0, 3).map((n) => (
                 <li key={n.id} className="flex items-center justify-between gap-3 px-3 py-2.5 transition hover:bg-brand-50/60">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{n.description}</p>
@@ -223,7 +206,7 @@ export default async function DashboardPage() {
   const [projects, products, finance, invoices] = await Promise.all([
     getProjectSummaries(),
     getProducts(),
-    isAdmin ? getFinanceSeries(6) : Promise.resolve(null),
+    isAdmin ? getFinanceSeries(12) : Promise.resolve(null),
     isAdmin ? getInvoiceSummary() : Promise.resolve(null),
   ]);
 
@@ -231,8 +214,9 @@ export default async function DashboardPage() {
   const lowItems = products.filter((p) => stockStatus(p) === "low");
   const outItems = products.filter((p) => stockStatus(p) === "out");
 
-  const revenue = finance ? finance.reduce((t, d) => t + d.revenue, 0) : 0;
-  const cost = finance ? finance.reduce((t, d) => t + d.cost, 0) : 0;
+  const last6 = finance ? finance.slice(-6) : [];
+  const revenue = last6.reduce((t, d) => t + d.revenue, 0);
+  const cost = last6.reduce((t, d) => t + d.cost, 0);
   const result = revenue - cost;
   const openAmount = invoices ? invoices.pendingAmount + invoices.overdueAmount : 0;
   const openCount = invoices ? invoices.pendingCount + invoices.overdueCount : 0;
@@ -242,7 +226,7 @@ export default async function DashboardPage() {
   const icon = "h-4.5 w-4.5";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header className="animate-gtg-rise">
         <h1 className="text-2xl font-semibold tracking-tight">Painel</h1>
         <p className="text-sm text-slate-500">Andamento das obras, financeiro e estoque</p>
