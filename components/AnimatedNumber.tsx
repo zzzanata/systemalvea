@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const intFmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
-// Número que "sobe" de zero até o valor final quando a tela abre.
-// Respeita quem pediu menos movimento (mostra o valor direto).
+// Número que "sobe" de zero na primeira vez e, depois, desliza suavemente
+// do valor anterior até o novo. Respeita quem pediu menos movimento.
 export default function AnimatedNumber({
   value,
   kind = "int",
@@ -17,19 +17,30 @@ export default function AnimatedNumber({
   duration?: number;
 }) {
   const [shown, setShown] = useState(0);
+  const from = useRef(0);
+  const first = useRef(true);
 
   useEffect(() => {
     let raf = 0;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || value === 0) {
-      raf = requestAnimationFrame(() => setShown(value));
+    const start = performance.now();
+    const origin = first.current ? 0 : from.current;
+    const time = first.current ? duration : 380;
+    first.current = false;
+
+    if (reduce || origin === value) {
+      raf = requestAnimationFrame(() => {
+        from.current = value;
+        setShown(value);
+      });
       return () => cancelAnimationFrame(raf);
     }
-    const start = performance.now();
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
+      const t = Math.min(1, (now - start) / time);
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // easeOutExpo
-      setShown(value * eased);
+      const v = origin + (value - origin) * eased;
+      from.current = v;
+      setShown(v);
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

@@ -241,9 +241,9 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className={grid4}>
-            <StatCard index={0} label="Faturamento" value={revenue} kind="brl" tone="good" icon={<TrendIcon className={icon} />} hint="entradas" />
-            <StatCard index={1} label="Custos" value={cost} kind="brl" tone="bad" icon={<ArrowsIcon className={icon} />} hint="saídas" />
-            <StatCard index={2} label="Resultado" value={result} kind="brl" tone={result >= 0 ? "good" : "bad"} icon={<TrendIcon className={icon} />} hint={result >= 0 ? "no azul" : "no vermelho"} />
+            <StatCard index={0} label="Faturamento" value={revenue} kind="brl" tone="good" series={last6.map((d) => ({ label: d.label, value: d.revenue }))} icon={<TrendIcon className={icon} />} hint="entradas" />
+            <StatCard index={1} label="Custos" value={cost} kind="brl" tone="bad" series={last6.map((d) => ({ label: d.label, value: d.cost }))} icon={<ArrowsIcon className={icon} />} hint="saídas" />
+            <StatCard index={2} label="Resultado" value={result} kind="brl" tone={result >= 0 ? "good" : "bad"} series={last6.map((d) => ({ label: d.label, value: d.revenue - d.cost }))} icon={<TrendIcon className={icon} />} hint={result >= 0 ? "no azul" : "no vermelho"} />
             <StatCard index={3} label="Notas em aberto" value={openAmount} kind="brl" tone={invoices.overdueCount > 0 ? "warn" : "default"} icon={<FileIcon className={icon} />} hint={`${openCount} nota(s)${invoices.overdueCount ? ` · ${invoices.overdueCount} vencida(s)` : ""}`} />
           </div>
         </section>
