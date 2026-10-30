@@ -32,7 +32,7 @@ export default async function LoginPage() {
         {/* Textura: grade de pontos deslizando + faixas de luz que atravessam */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-100 [background-image:radial-gradient(rgba(255,255,255,0.6)_1.5px,transparent_1.9px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
+          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-70 [background-image:radial-gradient(rgba(0,6,40,0.55)_1.5px,transparent_1.9px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
         />
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <span className="absolute inset-y-[-10%] left-0 w-1/4 animate-gtg-beam bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
