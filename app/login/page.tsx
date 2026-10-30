@@ -57,9 +57,11 @@ export default async function LoginPage() {
               {cells.map((c) => (
                 <span
                   key={c.i}
-                  className="aspect-[4/3] animate-gtg-twinkle rounded-[3px] border border-white/15 bg-gradient-to-br from-brand-500/60 to-brand-800"
+                  className="gtg-tile relative aspect-[4/3] animate-gtg-twinkle rounded-[3px] border border-white/15 bg-gradient-to-br from-brand-500/60 to-brand-800"
                   style={{ animationDelay: `${c.delay}s` }}
-                />
+                >
+                  <span className="gtg-tile-glow pointer-events-none absolute inset-0 rounded-[3px]" />
+                </span>
               ))}
               <span className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-gtg-sweep bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             </div>
