@@ -5,27 +5,103 @@ import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// Células do painel solar decorativo (6 x 5). O atraso de cada uma é "embaralhado" para
+// o brilho parecer aleatório, mas é sempre o mesmo (nada de Math.random no servidor).
+const cells = Array.from({ length: 30 }, (_, i) => ({ i, delay: ((i * 733) % 4200) / 1000 }));
+const sparks = [
+  { left: "8%", size: 6, delay: 0, dur: 9 },
+  { left: "20%", size: 4, delay: 2.5, dur: 11 },
+  { left: "34%", size: 7, delay: 5, dur: 8 },
+  { left: "48%", size: 4, delay: 1.2, dur: 10 },
+  { left: "62%", size: 6, delay: 3.8, dur: 12 },
+  { left: "76%", size: 5, delay: 6.5, dur: 9 },
+  { left: "90%", size: 4, delay: 0.8, dur: 10 },
+];
+
 export default async function LoginPage() {
   // Já logado: não faz sentido ver a tela de login.
   if (await getCurrentUser()) redirect("/");
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-brand-50 p-4">
-      <Image
-        src="/logo.png"
-        alt="GTG Energia"
-        width={640}
-        height={364}
-        priority
-        className="h-28 w-auto"
-      />
-      <div className="w-full max-w-sm space-y-6 rounded-xl border border-slate-200 border-t-4 border-t-sun-400 bg-white p-8 shadow-sm">
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-brand-900">Gestão de Obras</h1>
-          <p className="text-sm text-slate-500">Entre com seu e-mail e senha</p>
-        </header>
-        <LoginForm />
-      </div>
+    <div className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
+      {/* Lado da marca: azul-marinho com sol, painel solar e partículas de energia. */}
+      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+        {/* Sol com raios girando devagar */}
+        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[30rem] w-[30rem]">
+          <div className="absolute inset-0 animate-gtg-spin-slow rounded-full opacity-60 [background:repeating-conic-gradient(from_0deg,rgba(255,181,0,0.35)_0_3deg,transparent_3deg_24deg)] [mask-image:radial-gradient(circle,transparent_22%,black_24%,transparent_72%)]" />
+          <div className="absolute inset-[34%] animate-gtg-glow rounded-full bg-sun-400 shadow-[0_0_90px_30px_rgba(255,181,0,0.45)]" />
+        </div>
+
+        {/* Partículas de energia subindo */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {sparks.map((s, i) => (
+            <span
+              key={i}
+              className="absolute bottom-0 animate-gtg-float rounded-full bg-sun-400"
+              style={{ left: s.left, width: s.size, height: s.size, animationDelay: `${s.delay}s`, animationDuration: `${s.dur}s` }}
+            />
+          ))}
+        </div>
+
+        <div className="relative z-10 animate-gtg-rise">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-sun-200 ring-1 ring-inset ring-white/15">
+            <span className="h-1.5 w-1.5 animate-gtg-pulse rounded-full bg-sun-400" />
+            Energia solar
+          </p>
+        </div>
+
+        {/* Painel solar em perspectiva */}
+        <div aria-hidden className="relative z-10 mx-auto my-8 w-full max-w-md animate-gtg-rise [animation-delay:200ms]">
+          <div className="relative [perspective:900px]">
+            <div className="relative grid grid-cols-6 gap-1.5 overflow-hidden rounded-xl border border-white/20 bg-brand-950/40 p-2 shadow-2xl shadow-black/40 [transform:rotateX(52deg)_rotateZ(-22deg)]">
+              {cells.map((c) => (
+                <span
+                  key={c.i}
+                  className="aspect-[4/3] animate-gtg-twinkle rounded-[3px] border border-white/15 bg-gradient-to-br from-brand-500/60 to-brand-800"
+                  style={{ animationDelay: `${c.delay}s` }}
+                />
+              ))}
+              <span className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-gtg-sweep bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-md space-y-3 animate-gtg-rise [animation-delay:350ms]">
+          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
+            Gestão de obras <span className="text-sun-400">sem complicação.</span>
+          </h2>
+          <p className="text-sm leading-relaxed text-white/70">
+            Acompanhe o andamento das usinas, as notas fiscais, o financeiro e o estoque da GTG Energia em um só lugar.
+          </p>
+        </div>
+      </aside>
+
+      {/* Lado do formulário */}
+      <main className="relative flex flex-col items-center justify-center gap-8 bg-brand-50 p-5 sm:p-8">
+        {/* Brilhos suaves de fundo */}
+        <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 animate-gtg-glow rounded-full bg-sun-200/50 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 animate-gtg-glow rounded-full bg-brand-200/70 blur-3xl [animation-delay:2s]" />
+
+        <Image
+          src="/logo.png"
+          alt="GTG Energia"
+          width={640}
+          height={364}
+          priority
+          className="relative h-24 w-auto animate-gtg-rise sm:h-28"
+        />
+
+        <div className="relative w-full max-w-sm animate-gtg-rise space-y-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/90 p-7 shadow-xl shadow-brand-900/10 backdrop-blur [animation-delay:120ms] sm:p-8">
+          <span className="absolute inset-x-0 top-0 h-1 origin-left animate-gtg-fill bg-gradient-to-r from-sun-400 via-sun-200 to-sun-400 [animation-delay:400ms]" />
+          <header className="space-y-1">
+            <h1 className="text-xl font-semibold tracking-tight text-brand-900">Gestão de Obras</h1>
+            <p className="text-sm text-slate-500">Entre com seu e-mail e senha</p>
+          </header>
+          <LoginForm />
+        </div>
+
+        <p className="relative animate-gtg-text text-xs text-slate-400">© GTG Energia</p>
+      </main>
     </div>
   );
 }
