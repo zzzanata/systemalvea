@@ -9,13 +9,16 @@ export const dynamic = "force-dynamic";
 // o brilho parecer aleatório, mas é sempre o mesmo (nada de Math.random no servidor).
 const cells = Array.from({ length: 30 }, (_, i) => ({ i, delay: ((i * 733) % 4200) / 1000 }));
 const sparks = [
-  { left: "8%", size: 6, delay: 0, dur: 9 },
-  { left: "20%", size: 4, delay: 2.5, dur: 11 },
-  { left: "34%", size: 7, delay: 5, dur: 8 },
-  { left: "48%", size: 4, delay: 1.2, dur: 10 },
-  { left: "62%", size: 6, delay: 3.8, dur: 12 },
-  { left: "76%", size: 5, delay: 6.5, dur: 9 },
-  { left: "90%", size: 4, delay: 0.8, dur: 10 },
+  { left: "6%", size: 9, delay: 0, dur: 9, blur: 0 },
+  { left: "15%", size: 14, delay: 3.2, dur: 12, blur: 3 },
+  { left: "26%", size: 6, delay: 5.5, dur: 10, blur: 0 },
+  { left: "38%", size: 11, delay: 1.2, dur: 8, blur: 1 },
+  { left: "50%", size: 16, delay: 4.4, dur: 13, blur: 4 },
+  { left: "61%", size: 8, delay: 2.4, dur: 9, blur: 0 },
+  { left: "72%", size: 12, delay: 6.8, dur: 11, blur: 2 },
+  { left: "83%", size: 7, delay: 0.8, dur: 10, blur: 0 },
+  { left: "92%", size: 15, delay: 3.8, dur: 12, blur: 3 },
+  { left: "44%", size: 6, delay: 7.5, dur: 9, blur: 0 },
 ];
 
 export default async function LoginPage() {
@@ -38,7 +41,7 @@ export default async function LoginPage() {
             <span
               key={i}
               className="absolute bottom-0 animate-gtg-float rounded-full bg-sun-400"
-              style={{ left: s.left, width: s.size, height: s.size, animationDelay: `${s.delay}s`, animationDuration: `${s.dur}s` }}
+              style={{ left: s.left, width: s.size, height: s.size, animationDelay: `${s.delay}s`, animationDuration: `${s.dur}s`, filter: s.blur ? `blur(${s.blur}px)` : undefined }}
             />
           ))}
         </div>
