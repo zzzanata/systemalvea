@@ -32,7 +32,7 @@ export default async function LoginPage() {
         {/* Textura: grade de pontos deslizando + faixas de luz que atravessam */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-90 [background-image:radial-gradient(rgba(255,255,255,0.4)_1.3px,transparent_1.6px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
+          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-100 [background-image:radial-gradient(rgba(255,255,255,0.6)_1.5px,transparent_1.9px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
         />
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <span className="absolute inset-y-[-10%] left-0 w-1/4 animate-gtg-beam bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
@@ -66,7 +66,7 @@ export default async function LoginPage() {
         {/* Painel solar em perspectiva */}
         <div aria-hidden className="relative z-10 mx-auto my-8 w-full max-w-md animate-gtg-rise [animation-delay:200ms]">
           <div className="relative [perspective:900px]">
-            <div className="relative grid grid-cols-6 gap-1.5 overflow-hidden rounded-xl border border-white/20 bg-brand-950/40 p-2 shadow-2xl shadow-black/40 [transform:rotateX(52deg)_rotateZ(-22deg)]">
+            <div className="relative grid grid-cols-6 gap-1.5 overflow-hidden rounded-xl border border-white/20 bg-brand-950 p-2 shadow-2xl shadow-black/40 [transform:rotateX(52deg)_rotateZ(-22deg)]">
               {cells.map((c) => (
                 <span
                   key={c.i}
