@@ -198,7 +198,7 @@ export default function ProductGrid({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="bg-brand-900 text-xs uppercase tracking-wide text-white">
             <tr>
@@ -277,7 +277,7 @@ export default function ProductGrid({
 
 function Card({ label, value, tone = "text-slate-900" }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-xs text-slate-500">{label}</p>
       <p className={`mt-1 truncate text-xl font-semibold tabular-nums ${tone}`}>{value}</p>
     </div>

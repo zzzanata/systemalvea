@@ -244,7 +244,7 @@ export default function MovementGrid({
 
       <p className="text-xs text-slate-400">Clique em uma linha para ver os detalhes.</p>
 
-      <div className="max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="max-h-[70vh] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-brand-900 text-xs uppercase tracking-wide text-white">
             <tr>
@@ -313,7 +313,7 @@ export default function MovementGrid({
         </table>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm sm:grid-cols-4">
         <Stat label="Movimentações na tela" value={String(rows.length)} />
         <Stat label="Entradas" value={brl(totals.revenue)} tone="text-emerald-600" />
         <Stat label="Saídas" value={brl(totals.cost)} tone="text-red-600" />

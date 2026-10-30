@@ -42,7 +42,7 @@ export default function ProjectForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Nome da obra">

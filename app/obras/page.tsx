@@ -28,7 +28,7 @@ export default async function ProjectsPage() {
       </header>
 
       {projects.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400">
+        <p className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400">
           Nenhuma obra cadastrada ainda.
         </p>
       ) : (

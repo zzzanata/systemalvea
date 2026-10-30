@@ -150,7 +150,7 @@ export default function Checklist({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {stages.length === 0 && (
         <p className="px-4 py-10 text-center text-sm text-slate-400">
           Esta obra ainda não tem tarefas.

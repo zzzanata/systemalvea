@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { login } from "@/app/auth/actions";
 
 const inputCls =
-  "peer w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition duration-200 placeholder:text-slate-300 hover:border-brand-300 focus:border-brand-700 focus:shadow-[0_0_0_4px_rgba(0,10,115,0.08)]";
+  "peer w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition duration-200 placeholder:text-slate-300 hover:border-brand-300 focus:border-brand-700 focus:shadow-[0_0_0_4px_rgba(0,10,115,0.08)]";
 
 const Eye = ({ off }: { off: boolean }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">

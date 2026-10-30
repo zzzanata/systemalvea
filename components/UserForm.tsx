@@ -30,7 +30,7 @@ export default function UserForm() {
     <form
       ref={formRef}
       onSubmit={onSubmit}
-      className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
     >
       <h2 className="font-medium">Novo usuário</h2>
 

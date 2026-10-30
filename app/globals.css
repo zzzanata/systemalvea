@@ -166,6 +166,53 @@ html {
   }
 }
 
+
+/* ---- Padrão de animação de todas as telas ----
+   Cada bloco direto da página (título, painéis, tabelas, formulários) entra em
+   sequência, subindo suave. Quem já tem animação própria (classe animate-gtg-*)
+   ou marca data-gtg-own (painel e login) fica de fora, para não animar duas vezes.
+   Só opacidade + translação: nada de filter, para não quebrar painéis "fixed". */
+@keyframes gtg-stagger {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes gtg-row {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.gtg-stagger > :not([data-gtg-own]) > :not([class*="animate-gtg"]) {
+  animation: gtg-stagger 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(1) { animation-delay: 0ms; }
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(2) { animation-delay: 70ms; }
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(3) { animation-delay: 140ms; }
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(4) { animation-delay: 210ms; }
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(5) { animation-delay: 280ms; }
+.gtg-stagger > :not([data-gtg-own]) > :nth-child(n + 6) { animation-delay: 350ms; }
+
+/* Linhas de tabela entram em cascata (as primeiras 12). */
+.gtg-stagger tbody > tr {
+  animation: gtg-row 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 380ms;
+}
+.gtg-stagger tbody > tr:nth-child(1) { animation-delay: 208ms; }
+.gtg-stagger tbody > tr:nth-child(2) { animation-delay: 236ms; }
+.gtg-stagger tbody > tr:nth-child(3) { animation-delay: 264ms; }
+.gtg-stagger tbody > tr:nth-child(4) { animation-delay: 292ms; }
+.gtg-stagger tbody > tr:nth-child(5) { animation-delay: 320ms; }
+.gtg-stagger tbody > tr:nth-child(6) { animation-delay: 348ms; }
+.gtg-stagger tbody > tr:nth-child(7) { animation-delay: 376ms; }
+.gtg-stagger tbody > tr:nth-child(8) { animation-delay: 404ms; }
+.gtg-stagger tbody > tr:nth-child(9) { animation-delay: 432ms; }
+.gtg-stagger tbody > tr:nth-child(10) { animation-delay: 460ms; }
+.gtg-stagger tbody > tr:nth-child(11) { animation-delay: 488ms; }
+.gtg-stagger tbody > tr:nth-child(12) { animation-delay: 516ms; }
+
+/* Cartões clicáveis (links com borda) sobem um pouco ao passar o mouse. */
+a.rounded-2xl.border, a.rounded-xl.border {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s, border-color 0.25s;
+}
+
 /* Quem pediu menos movimento no sistema não vê animações. */
 @media (prefers-reduced-motion: reduce) {
   *,

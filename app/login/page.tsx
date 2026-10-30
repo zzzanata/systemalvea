@@ -23,7 +23,7 @@ export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
 
   return (
-    <div className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
+    <div data-gtg-own className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
       {/* Lado da marca: azul-marinho com sol, painel solar e partículas de energia. */}
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
         {/* Sol com raios girando devagar */}

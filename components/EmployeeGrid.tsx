@@ -137,7 +137,7 @@ export default function EmployeeGrid({ employees }: { employees: Employee[] }) {
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-brand-900 text-xs uppercase tracking-wide text-white">
             <tr>

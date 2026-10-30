@@ -158,7 +158,7 @@ export default async function DashboardPage() {
   const icon = "h-4.5 w-4.5";
 
   return (
-    <div className="space-y-6">
+    <div data-gtg-own className="space-y-6">
       <header className="animate-gtg-rise">
         <h1 className="text-2xl font-semibold tracking-tight">Painel</h1>
         <p className="text-sm text-slate-500">Andamento das obras, financeiro e estoque</p>

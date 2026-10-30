@@ -34,7 +34,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         ← Todas as obras
       </Link>
 
-      <header className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center">
+      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center">
         <ProgressRing percent={project.percent} className="h-28 w-28 shrink-0" />
 
         <div className="min-w-0 flex-1 space-y-3">

@@ -111,7 +111,7 @@ export default function Team({
   const others = team.length - leads;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5">
         <h3 className="text-sm font-semibold text-slate-700">Equipe da obra</h3>
         <p className="text-xs text-slate-500">
