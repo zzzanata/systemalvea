@@ -213,22 +213,22 @@ a.rounded-2xl.border, a.rounded-xl.border {
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s, border-color 0.25s;
 }
 
-/* Painel solar do login: a célula sob o mouse "capta o sol" (acende em amarelo,
-   sobe e brilha) e passa a luz para as vizinhas. Acende rápido, apaga devagar. */
+/* Painel solar do login: a célula sob o mouse "capta o sol" (acende em azul brilhante,
+   sobe e brilha) e passa o brilho azul para as vizinhas. Acende rápido, apaga devagar. */
 .gtg-tile {
   cursor: pointer;
   transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 1.1s, border-color 1.1s;
 }
 .gtg-tile-glow {
   opacity: 0;
-  background: radial-gradient(circle at 35% 30%, #fff6cc 0%, #ffb500 55%, #e6a200 100%);
-  box-shadow: 0 0 18px 4px rgba(255, 181, 0, 0.55);
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #9fb2ff 38%, #4a63f0 100%);
+  box-shadow: 0 0 22px 6px rgba(120, 150, 255, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.6);
   transition: opacity 1.4s ease-out;
 }
 .gtg-tile:hover {
   transform: translateY(-3px) scale(1.12);
-  border-color: rgba(255, 224, 140, 0.9);
-  box-shadow: 0 8px 18px rgba(255, 181, 0, 0.35);
+  border-color: rgba(200, 215, 255, 0.95);
+  box-shadow: 0 8px 22px rgba(120, 150, 255, 0.5);
   transition-duration: 0.18s;
   z-index: 2;
   animation-play-state: paused;
