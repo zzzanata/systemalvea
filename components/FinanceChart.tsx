@@ -75,6 +75,14 @@ export default function FinanceChart({ data }: { data: FinancePoint[] }) {
     `${line(key)} L${cx(shown.length - 1).toFixed(1)} ${y(0)} L${cx(0).toFixed(1)} ${y(0)} Z`;
 
   const hovered = hover !== null ? shown[hover] : null;
+
+  // Com muitos meses os rótulos não cabem: mostra só o mês, e o ano no primeiro e em janeiro.
+  const crowded = shown.length > 6;
+  const tickLabel = (l: string, i: number) => {
+    if (!crowded) return l;
+    const [m] = l.split("/");
+    return i === 0 || m.toLowerCase().startsWith("jan") ? l : m;
+  };
   const tipLeft = hover !== null ? ((cx(hover) / W) * 100) : 0;
 
   const pill = (active: boolean) =>
@@ -216,11 +224,11 @@ export default function FinanceChart({ data }: { data: FinancePoint[] }) {
               x={cx(i)}
               y={H - 7}
               textAnchor="middle"
-              fontSize="11"
+              fontSize={crowded ? 9.5 : 11}
               fill={hover === i ? "#000a73" : "#64748b"}
               fontWeight={hover === i ? 600 : 400}
             >
-              {d.label}
+              {tickLabel(d.label, i)}
             </text>
           ))}
 

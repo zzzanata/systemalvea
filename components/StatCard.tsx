@@ -49,7 +49,7 @@ export default function StatCard({
   const max = Math.max(0, ...values);
   const span = max - min || 1;
   const px = (i: number) => 4 + (i / Math.max(1, n - 1)) * 92; // %
-  const py = (v: number) => 14 + (1 - (v - min) / span) * 70; // %
+  const py = (v: number) => 12 + (1 - (v - min) / span) * 76; // %
 
   const path = has ? series!.map((p, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(2)} ${py(p.value).toFixed(2)}`).join(" ") : "";
   const area = has ? `${path} L${px(n - 1)} 100 L${px(0)} 100 Z` : "";
@@ -72,7 +72,7 @@ export default function StatCard({
       onMouseLeave={() => setHover(null)}
       onTouchMove={(e) => move(e.touches[0].clientX, e.currentTarget)}
       onTouchEnd={() => setHover(null)}
-      className="group relative h-[7.25rem] min-w-0 animate-gtg-rise overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/10"
+      className="group relative h-[8.5rem] min-w-0 animate-gtg-rise overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/10"
     >
       {/* Faixa de cor no topo, que "enche" ao entrar. */}
       <span className={`absolute inset-x-0 top-0 z-20 h-1 origin-left animate-gtg-fill bg-gradient-to-r ${t.bar}`} style={{ animationDelay: `${index * 70 + 150}ms` }} />
@@ -81,7 +81,7 @@ export default function StatCard({
 
       {/* Mini-gráfico: discreto em repouso, ganha vida ao passar o mouse. */}
       {has && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-100">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-11 opacity-50 transition-opacity duration-300 group-hover:opacity-100">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full animate-gtg-wipe" style={{ animationDelay: `${index * 70 + 300}ms` }}>
             <defs>
               <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
@@ -102,7 +102,7 @@ export default function StatCard({
           </svg>
           {hover !== null && series && (
             <>
-              <span className="absolute inset-y-0 w-px -translate-x-1/2 bg-slate-300/70" style={{ left: `${px(hover)}%` }} />
+              <span className="absolute inset-y-0 w-px -translate-x-1/2 bg-slate-300/80" style={{ left: `${px(hover)}%` }} />
               <span
                 className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white shadow"
                 style={{ left: `${px(hover)}%`, top: `${py(series[hover].value)}%`, borderColor: t.hex, transition: "left 120ms, top 120ms" }}
@@ -112,7 +112,7 @@ export default function StatCard({
         </div>
       )}
 
-      <div className="@container relative z-[5] flex h-full flex-col justify-between p-4 sm:p-5">
+      <div className="@container relative z-[5] flex h-full flex-col justify-between p-4 pb-12 sm:p-5 sm:pb-12">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 truncate text-sm font-medium text-slate-500">{label}</p>
           {icon && (
