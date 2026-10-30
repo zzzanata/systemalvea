@@ -4,7 +4,7 @@ import FinanceChart from "@/components/FinanceChart";
 import InvoiceRings from "@/components/InvoiceRings";
 import { ArrowsIcon, BoxIcon, FileIcon, SunIcon, TrendIcon } from "@/components/Icons";
 import Panel from "@/components/Panel";
-import ProgressRing from "@/components/ProgressRing";
+import ProjectsBoard from "@/components/ProjectsBoard";
 import StatCard from "@/components/StatCard";
 import { getCurrentUser } from "@/lib/auth";
 import { getFinanceSeries, getInvoiceSummary, getProducts, getProjectSummaries } from "@/lib/data";
@@ -36,11 +36,6 @@ function ProjectsPanel({
   isAdmin: boolean;
   index: number;
 }) {
-  // Em tela cheia (operador) cabem mais anéis por linha do que na coluna do meio de 3 painéis.
-  const gridCls = wide
-    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-    : "grid-cols-2 sm:grid-cols-3";
-
   return (
     <Panel
       index={index}
@@ -64,70 +59,7 @@ function ProjectsPanel({
           )}
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className={`grid gap-3 ${gridCls}`}>
-            {(wide ? projects : projects.slice(0, 6)).map((p) => (
-              <Link
-                key={p.id}
-                href={`/obras/${p.id}`}
-                className="group flex min-h-[8.5rem] flex-col items-center justify-start gap-2 rounded-xl border border-transparent p-2 text-center transition duration-300 hover:-translate-y-0.5 hover:border-brand-100 hover:bg-brand-50/60"
-              >
-                <ProgressRing percent={p.percent} className="h-20 w-20 transition-transform duration-300 group-hover:scale-105" />
-                <div className="w-full min-w-0">
-                  <p className="truncate text-sm font-medium">{p.name}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {p.total > 0 ? `${p.done}/${p.total} tarefas` : p.location || "—"}
-                  </p>
-                </div>
-                {p.late && <Badge tone="rose">Atrasada</Badge>}
-              </Link>
-            ))}
-          </div>
-
-          {wide ? (
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              O que falta fazer
-            </h3>
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
-              {projects.slice(0, 3).map((p) => (
-                <li key={p.id}>
-                  <Link href={`/obras/${p.id}`} className="block px-3 py-2.5 transition hover:bg-brand-50/60">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium">{p.name}</span>
-                      <span className="shrink-0 text-xs text-slate-400">
-                        {p.done}/{p.total}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-brand-100">
-                      <div
-                        className={`h-full origin-left animate-gtg-fill rounded-full ${p.percent >= 100 ? "bg-emerald-500" : p.percent >= 35 ? "bg-brand-900" : "bg-sun-400"}`}
-                        style={{ width: `${Math.max(0, Math.min(100, p.percent))}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 truncate text-xs text-slate-500">
-                      {p.percent >= 100
-                        ? "Obra concluída"
-                        : p.next.length > 0
-                          ? `Próximas: ${p.next.join(" · ")}`
-                          : "Sem tarefas cadastradas"}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {projects.length > 3 && (
-              <Link href="/obras" className="mt-2 block text-center text-xs font-medium text-brand-700 hover:text-brand-900">
-                + {projects.length - 3} obra(s)
-              </Link>
-            )}
-          </div>
-          ) : projects.length > 6 ? (
-            <Link href="/obras" className="block text-center text-xs font-medium text-brand-700 hover:text-brand-900">
-              + {projects.length - 6} obra(s)
-            </Link>
-          ) : null}
-        </div>
+        <ProjectsBoard projects={projects} wide={wide} />
       )}
     </Panel>
   );
