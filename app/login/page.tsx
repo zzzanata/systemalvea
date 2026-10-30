@@ -29,6 +29,16 @@ export default async function LoginPage() {
     <div data-gtg-own className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
       {/* Lado da marca: azul-marinho com sol, painel solar e partículas de energia. */}
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+        {/* Textura: grade de pontos deslizando + faixas de luz que atravessam */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-90 [background-image:radial-gradient(rgba(255,255,255,0.4)_1.3px,transparent_1.6px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
+        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <span className="absolute inset-y-[-10%] left-0 w-1/4 animate-gtg-beam bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <span className="absolute inset-y-[-10%] left-0 w-[12%] animate-gtg-beam bg-gradient-to-r from-transparent via-sun-400/[0.09] to-transparent [animation-delay:4.5s]" />
+        </div>
+
         {/* Sol com raios girando devagar */}
         <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[30rem] w-[30rem]">
           <div className="absolute inset-0 animate-gtg-spin-slow rounded-full opacity-60 [background:repeating-conic-gradient(from_0deg,rgba(255,181,0,0.35)_0_3deg,transparent_3deg_24deg)] [mask-image:radial-gradient(circle,transparent_22%,black_24%,transparent_72%)]" />
@@ -40,7 +50,7 @@ export default async function LoginPage() {
           {sparks.map((s, i) => (
             <span
               key={i}
-              className="absolute bottom-0 animate-gtg-float rounded-full bg-sun-400"
+              className="absolute -bottom-5 animate-gtg-float rounded-full bg-sun-400 will-change-transform"
               style={{ left: s.left, width: s.size, height: s.size, animationDelay: `${s.delay}s`, animationDuration: `${s.dur}s`, filter: s.blur ? `blur(${s.blur}px)` : undefined }}
             />
           ))}
