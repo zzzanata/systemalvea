@@ -42,7 +42,7 @@ export default async function MovimentacoesPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Movimentações</h1>
         <p className="text-sm text-slate-500">
-          Gastos e ganhos da empresa. Entrada conta como faturamento, saída como custo.
+          Gastos e ganhos da empresa, incluindo as notas fiscais. Entrada conta como faturamento, saída como custo.
         </p>
       </header>
 

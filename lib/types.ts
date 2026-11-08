@@ -150,7 +150,15 @@ export type MovementRecord = {
   amount: number; // total = quantidade x valor unitário
   projectId: string;
   projectName: string;
+  /** MANUAL = lançada na tela de Movimentações; NOTA = vem de uma nota fiscal (somente leitura aqui). */
+  source: "MANUAL" | "NOTA";
+  /** Só para source NOTA: número da nota e status (PENDING | PAID | CANCELED). */
+  invoiceNumber: string;
+  invoiceStatus: string;
 };
+
+/** Categoria "virtual" das linhas que vêm de notas fiscais (não existe no banco). */
+export const NOTES_CATEGORY_ID = "__nf__";
 
 export type CategoryOption = { id: string; name: string };
 

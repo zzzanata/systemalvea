@@ -2,6 +2,7 @@
 import prisma from "@/lib/prisma";
 import { summarizeInvoices } from "@/lib/invoices";
 import { formatDay, lastMonths, monthKey, todayBR, todayStart } from "@/lib/dates";
+import { NOTES_CATEGORY_ID } from "@/lib/types";
 import type {
   AppUser,
   Category,
@@ -180,14 +181,25 @@ export async function getProject(id: string): Promise<ProjectDetail | null> {
 
 // ---------- Financeiro ----------
 
+// Data que a nota conta no financeiro: emissão (ou vencimento / cadastro, se faltar).
+const invoiceDate = (n: { issuedAt: Date | null; dueDate: Date | null; createdAt: Date }) =>
+  n.issuedAt ?? n.dueDate ?? n.createdAt;
+
 export async function getFinanceSeries(months = 6): Promise<FinancePoint[]> {
   const range = lastMonths(months);
   const since = new Date(`${range[0].key}-01T00:00:00Z`);
 
-  const rows = await prisma.financeEntry.findMany({
-    where: { date: { gte: since } },
-    select: { type: true, amount: true, date: true },
-  });
+  const [rows, notes] = await Promise.all([
+    prisma.financeEntry.findMany({
+      where: { date: { gte: since } },
+      select: { type: true, amount: true, date: true },
+    }),
+    // Notas fiscais entram no faturamento (Entrada) e nos custos (Saída); canceladas ficam de fora.
+    prisma.invoice.findMany({
+      where: { status: { not: "CANCELED" } },
+      select: { type: true, amount: true, issuedAt: true, dueDate: true, createdAt: true },
+    }),
+  ]);
 
   const byMonth = new Map<string, FinancePoint>(
     range.map((m) => [m.key, { label: m.label, revenue: 0, cost: 0 }]),
@@ -198,6 +210,13 @@ export async function getFinanceSeries(months = 6): Promise<FinancePoint[]> {
     if (!point) continue; // lançamento em mês futuro: fora do gráfico
     if (r.type === "REVENUE") point.revenue += Number(r.amount);
     else point.cost += Number(r.amount);
+  }
+
+  for (const n of notes) {
+    const point = byMonth.get(monthKey(invoiceDate(n)));
+    if (!point) continue;
+    if (n.type === "IN") point.revenue += Number(n.amount);
+    else point.cost += Number(n.amount);
   }
 
   return [...byMonth.values()];
@@ -221,12 +240,18 @@ export async function getFinanceCategories(): Promise<CategoryOption[]> {
 }
 
 export async function getMovementRecords(): Promise<MovementRecord[]> {
-  const rows = await prisma.financeEntry.findMany({
-    include: { project: { select: { name: true } }, category: { select: { name: true } } },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-  });
+  const [rows, notes] = await Promise.all([
+    prisma.financeEntry.findMany({
+      include: { project: { select: { name: true } }, category: { select: { name: true } } },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    }),
+    prisma.invoice.findMany({
+      where: { status: { not: "CANCELED" } },
+      include: { project: { select: { name: true } } },
+    }),
+  ]);
 
-  return rows.map((e) => {
+  const manual: MovementRecord[] = rows.map((e) => {
     const amount = Number(e.amount);
     const quantity = Number(e.quantity) || 1;
     return {
@@ -242,8 +267,37 @@ export async function getMovementRecords(): Promise<MovementRecord[]> {
       amount,
       projectId: e.projectId ?? "",
       projectName: e.project?.name ?? "",
+      source: "MANUAL" as const,
+      invoiceNumber: "",
+      invoiceStatus: "",
     };
   });
+
+  // Cada nota fiscal vira uma linha (Entrada = faturamento, Saída = custo), só para leitura.
+  const fromNotes: MovementRecord[] = notes.map((n) => {
+    const amount = Number(n.amount);
+    const party = n.type === "IN" ? n.recipientName : n.senderName;
+    return {
+      id: `nf-${n.id}`,
+      type: n.type === "IN" ? ("REVENUE" as const) : ("COST" as const),
+      date: invoiceDate(n).toISOString().slice(0, 10),
+      categoryId: NOTES_CATEGORY_ID,
+      categoryName: "Notas fiscais",
+      description: [n.number ? `NF ${n.number}` : "NF", n.description, party ? `(${party})` : ""]
+        .filter(Boolean)
+        .join(" · "),
+      quantity: 1,
+      unitValue: amount,
+      amount,
+      projectId: n.projectId ?? "",
+      projectName: n.project?.name ?? "",
+      source: "NOTA" as const,
+      invoiceNumber: n.number ?? "",
+      invoiceStatus: n.status,
+    };
+  });
+
+  return [...manual, ...fromNotes].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
 // ---------- Notas fiscais ----------

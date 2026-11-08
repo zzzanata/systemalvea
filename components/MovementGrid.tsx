@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   createEntry,
@@ -9,7 +10,7 @@ import {
 } from "@/app/financeiro/actions";
 import Badge from "@/components/Badge";
 import { CloseIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
-import { brl, type CategoryOption, type MovementRecord, type ProjectOption } from "@/lib/types";
+import { brl, NOTES_CATEGORY_ID, type CategoryOption, type MovementRecord, type ProjectOption } from "@/lib/types";
 
 const NEW_CATEGORY = "__new__";
 
@@ -81,6 +82,7 @@ export default function MovementGrid({
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [panel, setPanel] = useState<Panel>(null);
@@ -111,6 +113,7 @@ export default function MovementGrid({
     const list = entries.filter((e) => {
       if (typeFilter && e.type !== typeFilter) return false;
       if (categoryFilter && e.categoryId !== categoryFilter) return false;
+      if (sourceFilter && e.source !== sourceFilter) return false;
       if (monthFilter && !e.date.startsWith(monthFilter)) return false;
       if (!term) return true;
       return [e.description, e.categoryName, e.projectName].join(" ").toLowerCase().includes(term);
@@ -137,7 +140,7 @@ export default function MovementGrid({
       });
     }
     return list;
-  }, [entries, q, typeFilter, categoryFilter, monthFilter, sort]);
+  }, [entries, q, typeFilter, categoryFilter, sourceFilter, monthFilter, sort]);
 
   const totals = useMemo(() => {
     let revenue = 0;
@@ -191,12 +194,12 @@ export default function MovementGrid({
   }
 
   function exportCsv() {
-    const head = ["Data", "Tipo", "Categoria", "Descrição", "Quantidade", "Valor unitário", "Total", "Obra"];
+    const head = ["Data", "Tipo", "Categoria", "Descrição", "Quantidade", "Valor unitário", "Total", "Obra", "Origem"];
     const lines = rows.map((e) =>
       [
         dmy(e.date), e.type === "REVENUE" ? "Entrada" : "Saída", e.categoryName, e.description,
         String(e.quantity).replace(".", ","), e.unitValue.toFixed(2).replace(".", ","),
-        e.amount.toFixed(2).replace(".", ","), e.projectName,
+        e.amount.toFixed(2).replace(".", ","), e.projectName, e.source === "NOTA" ? "Nota fiscal" : "Lançamento",
       ].map(csvCell).join(";"),
     );
     const blob = new Blob(["﻿" + [head.join(";"), ...lines].join("\r\n")], {
@@ -227,6 +230,12 @@ export default function MovementGrid({
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
+          <option value={NOTES_CATEGORY_ID}>Notas fiscais</option>
+        </select>
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className={toolbar} aria-label="Filtrar por origem">
+          <option value="">Todas as origens</option>
+          <option value="MANUAL">Lançadas aqui</option>
+          <option value="NOTA">Vindas de notas fiscais</option>
         </select>
         <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className={toolbar} aria-label="Filtrar por mês">
           <option value="">Todos os meses</option>
@@ -276,7 +285,10 @@ export default function MovementGrid({
                 <td className="hidden whitespace-nowrap px-2 py-3 tabular-nums sm:table-cell sm:px-3">{dmy(e.date)}</td>
                 <td className="hidden px-2 py-3 md:table-cell sm:px-3">{typeBadge(e.type)}</td>
                 <td className="max-w-[160px] px-2 py-3 sm:px-3">
-                  <p className="truncate font-medium">{e.categoryName || "Sem categoria"}</p>
+                  <p className="truncate font-medium">
+                    {e.categoryName || "Sem categoria"}
+                    {e.source === "NOTA" && <span className="ml-1.5 rounded bg-brand-50 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-brand-900">NF</span>}
+                  </p>
                   <p className="truncate text-xs text-slate-500 lg:hidden">{e.description}</p>
                 </td>
                 <td className="hidden max-w-[260px] px-2 py-3 lg:table-cell sm:px-3">
@@ -289,6 +301,11 @@ export default function MovementGrid({
                   {brl(e.amount)}
                 </td>
                 <td className="hidden px-3 py-3 md:table-cell" onClick={(ev) => ev.stopPropagation()}>
+                  {e.source === "NOTA" ? (
+                    <Link href="/notas-fiscais" title="Esta linha vem de uma nota fiscal: edite em Notas fiscais" className="rounded px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50 hover:text-brand-900">
+                      Ver nota
+                    </Link>
+                  ) : (
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => openEdit(e)} title="Editar" className="rounded p-1.5 text-slate-500 hover:bg-brand-50 hover:text-brand-900">
                       <PencilIcon className="h-4 w-4" />
@@ -297,6 +314,7 @@ export default function MovementGrid({
                       <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -407,14 +425,28 @@ function Details({
         <dl className="grid grid-cols-2 gap-4">
           <Item label="Data">{dmy(r.date)}</Item>
           <Item label="Obra">{r.projectName || "—"}</Item>
-          <Item label="Quantidade">{qtyFmt(r.quantity)}</Item>
-          <Item label="Valor unitário">{brl(r.unitValue)}</Item>
+          {r.source === "MANUAL" && (
+            <>
+              <Item label="Quantidade">{qtyFmt(r.quantity)}</Item>
+              <Item label="Valor unitário">{brl(r.unitValue)}</Item>
+            </>
+          )}
         </dl>
         <dl>
           <Item label="Descrição">{r.description}</Item>
         </dl>
       </div>
 
+      {r.source === "NOTA" ? (
+        <footer className="space-y-2 border-t border-slate-200 p-4">
+          <p className="text-xs text-slate-500">
+            Esta linha vem da nota fiscal{r.invoiceNumber ? ` nº ${r.invoiceNumber}` : ""}. Para editar ou excluir, use a tela de Notas fiscais.
+          </p>
+          <Link href="/notas-fiscais" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800">
+            Abrir Notas fiscais
+          </Link>
+        </footer>
+      ) : (
       <footer className="flex items-center gap-2 border-t border-slate-200 p-4">
         <button type="button" onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800">
           <PencilIcon className="h-4 w-4" /> Editar
@@ -423,6 +455,7 @@ function Details({
           <TrashIcon className="h-4 w-4" /> Excluir
         </button>
       </footer>
+      )}
     </>
   );
 }
