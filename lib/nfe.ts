@@ -13,6 +13,11 @@ export type ParsedNota = {
   recipientName: string;
   recipientCnpj: string;
   kind: "NF-e" | "NFS-e";
+  /** Cidade do emitente / do destinatário, quando a nota traz o endereço ("Garça - SP"). */
+  senderCity?: string;
+  recipientCity?: string;
+  /** Informações complementares da nota (às vezes citam a obra e a cidade). */
+  hint?: string;
 };
 
 function find(root: Element | Document | null, ...path: string[]): Element | null {
@@ -29,6 +34,13 @@ const day = (v: string) => (/^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : "");
 
 function doc(el: Element | null) {
   return txt(find(el, "CNPJ")) || txt(find(el, "CPF")) || txt(find(el, "Cnpj")) || txt(find(el, "Cpf"));
+}
+
+function cityOf(party: Element | null) {
+  const end = find(party, "enderEmit") ?? find(party, "enderDest") ?? find(party, "Endereco") ?? party;
+  const name = txt(find(end, "xMun")) || txt(find(end, "Cidade")) || txt(find(end, "xCidade"));
+  const uf = txt(find(end, "UF")) || txt(find(end, "Uf"));
+  return name ? (uf ? `${name} - ${uf}` : name) : "";
 }
 
 function collapse(s: string, max: number) {
@@ -80,6 +92,9 @@ function parseNfe(d: Document, inf: Element): ParsedNota {
     amount,
     issuedAt: day(issued),
     dueDate: dues[0] ?? "",
+    senderCity: cityOf(emit),
+    recipientCity: cityOf(dest),
+    hint: collapse(txt(find(inf, "infCpl")), 300),
     senderName: txt(find(emit, "xNome")),
     senderCnpj: doc(emit),
     recipientName: txt(find(dest, "xNome")),
@@ -103,6 +118,8 @@ function parseNfse(inf: Element): ParsedNota {
     amount,
     issuedAt: day(txt(find(inf, "DataEmissao")) || txt(find(inf, "dhEmi"))),
     dueDate: "",
+    senderCity: cityOf(prest),
+    recipientCity: cityOf(tom),
     senderName: txt(find(prest, "RazaoSocial")) || txt(find(prest, "xNome")),
     senderCnpj: doc(prest),
     recipientName: txt(find(tom, "RazaoSocial")) || txt(find(tom, "xNome")),

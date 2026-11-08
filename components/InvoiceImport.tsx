@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { importInvoices, type InvoiceInput } from "@/app/notas-fiscais/actions";
 import { CloseIcon, DownloadIcon } from "@/components/Icons";
 import Badge from "@/components/Badge";
-import { cleanCity, guessCity } from "@/lib/cities";
+import { cleanCity, detectCity } from "@/lib/cities";
 import { formatCnpj, normalizeAccessKey, normalizeCnpj } from "@/lib/invoices";
 import { parseNotaXml, type ParsedNota } from "@/lib/nfe";
 import { parseNotaPdf } from "@/lib/nfePdf";
@@ -71,7 +71,7 @@ export default function InvoiceImport({
         if (!nota.amount || Number(nota.amount) <= 0) throw new Error("Não consegui ler o valor da nota. Use o XML.");
         const { type, auto } = detect(nota, myCnpj, defaultType);
         const key = normalizeAccessKey(nota.accessKey);
-        next.push({ file: f.name, nota, fromPdf: isPdf, city: guessCity(nota.description, cities) || defaultCity, type, autoType: auto, duplicate: key ? keys.has(key) : false });
+        next.push({ file: f.name, nota, fromPdf: isPdf, city: detectCity(`${nota.description} ${nota.hint ?? ""}`, cities) || (type === "IN" ? nota.recipientCity : nota.senderCity) || defaultCity, type, autoType: auto, duplicate: key ? keys.has(key) : false });
       } catch (e) {
         next.push({ file: f.name, error: (e as Error).message, type: "OUT", autoType: false, city: "" });
       }

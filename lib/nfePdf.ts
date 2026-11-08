@@ -202,6 +202,9 @@ function parseDanfse(items: TextItem[], flat: string): ParsedNota {
     inSection("TOMADOR", "NOME") || inSection("TOMADOR", "RAZAO SOCIAL");
   const recipientCnpj = (inSection("TOMADOR", "CNPJ") || inSection("TOMADOR", "CPF")).replace(/[^0-9A-Za-z]/g, "");
 
+  const senderCity = inSection("EMITENTE", "MUNICIPIO") || inSection("EMITENTE", "CIDADE");
+  const recipientCity = inSection("TOMADOR", "MUNICIPIO") || inSection("TOMADOR", "CIDADE");
+
   const desc = textValue("DESCRICAO DO SERVICO", "DISCRIMINACAO DO SERVICO", "DISCRIMINACAO");
 
   return {
@@ -212,6 +215,8 @@ function parseDanfse(items: TextItem[], flat: string): ParsedNota {
     amount,
     issuedAt: dmyToIso(issued),
     dueDate: "",
+    senderCity,
+    recipientCity,
     senderName,
     senderCnpj,
     recipientName,

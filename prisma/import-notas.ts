@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { extractCity } from "../lib/cities";
 
 type Row = {
   row: number;
@@ -74,6 +75,7 @@ async function main() {
         senderCnpj: r.senderCnpj || null,
         recipientName: r.recipientName || null,
         recipientCnpj: r.recipientCnpj || null,
+        city: extractCity(r.description) || null,
       })),
     });
     console.log(`Pronto: ${result.count} notas importadas.`);

@@ -5,7 +5,7 @@ import { assignCities } from "@/app/notas-fiscais/actions";
 import InvoiceGrid from "@/components/InvoiceGrid";
 import InvoiceRings from "@/components/InvoiceRings";
 import Panel from "@/components/Panel";
-import { cityKey, guessCity, listCities, NO_CITY } from "@/lib/cities";
+import { cityKey, detectCity, listCities, NO_CITY } from "@/lib/cities";
 import { summarizeInvoices } from "@/lib/invoices";
 import { brl, type InvoiceRecord, type ProjectOption } from "@/lib/types";
 
@@ -45,11 +45,11 @@ export default function InvoicesView({
 
   const totalOf = (list: InvoiceRecord[]) => list.reduce((t, i) => t + (i.status === "CANCELED" ? 0 : i.amount), 0);
 
-  // Sugestões: notas sem cidade cuja descrição cita uma cidade já cadastrada.
+  // Detecção automática: a cidade vem do texto da descrição ("INFRAESTRUTURA LARANJAL - SP").
   const suggestions = useMemo(() => {
     const byCity = new Map<string, string[]>();
     for (const i of untagged) {
-      const g = guessCity(i.description, cityNames);
+      const g = detectCity(i.description, cityNames);
       if (!g) continue;
       byCity.set(g, [...(byCity.get(g) ?? []), i.id]);
     }
@@ -58,8 +58,11 @@ export default function InvoicesView({
   const suggestionCount = suggestions.reduce((t, s) => t + s.ids.length, 0);
 
   function applySuggestions() {
-    const lines = suggestions.map((s) => `• ${s.ids.length} nota(s) → ${s.city}`).join("\n");
-    if (!confirm(`Definir a cidade destas notas pela descrição?\n\n${lines}`)) return;
+    const lines = suggestions
+      .sort((a, b) => b.ids.length - a.ids.length)
+      .map((s) => `• ${s.city}: ${s.ids.length} nota(s)`)
+      .join("\n");
+    if (!confirm(`Definir a cidade pelo texto da descrição?\n\n${lines}\n\nVocê pode editar qualquer nota depois.`)) return;
     startTransition(async () => {
       const r = await assignCities(suggestions);
       if ("error" in r) alert(r.error);
@@ -112,41 +115,23 @@ export default function InvoicesView({
         </nav>
       )}
 
-      {cityTabs.length === 0 && invoices.length > 0 && (
-        <p className="rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-900">
-          Ainda não há cidades. Use <strong>Cidade em lote</strong> (filtre pela busca, por exemplo &quot;LARANJAL&quot;, e defina a cidade das notas
-          que aparecerem) ou edite cada nota. As abas por cidade aparecem aqui.
-        </p>
-      )}
-
-      {active !== NO_CITY && untagged.length > 0 && cityTabs.length > 0 && active === ALL && (
-        <p className="flex flex-wrap items-center gap-2 rounded-xl bg-sun-50 px-4 py-2.5 text-sm text-sun-700">
-          {untagged.length} nota(s) ainda sem cidade.
+      {untagged.length > 0 && (active === ALL || active === NO_CITY) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-sun-50 px-4 py-2.5 text-sm text-sun-700">
+          <span>
+            {untagged.length} nota(s) sem cidade
+            {suggestionCount > 0 ? `; o sistema encontrou a cidade em ${suggestionCount} delas pela descrição.` : "."}
+          </span>
           {suggestionCount > 0 && (
             <button
               type="button"
               onClick={applySuggestions}
               disabled={pending}
-              className="rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-brand-900 ring-1 ring-inset ring-sun-200 hover:bg-sun-100 disabled:opacity-50"
+              className="rounded-lg bg-brand-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-800 disabled:opacity-50"
             >
-              Sugerir cidade pela descrição ({suggestionCount})
+              {pending ? "Aplicando..." : "Detectar cidades automaticamente"}
             </button>
           )}
-        </p>
-      )}
-
-      {active === NO_CITY && suggestionCount > 0 && (
-        <p className="flex flex-wrap items-center gap-2 rounded-xl bg-sun-50 px-4 py-2.5 text-sm text-sun-700">
-          {suggestionCount} de {untagged.length} notas citam uma cidade na descrição.
-          <button
-            type="button"
-            onClick={applySuggestions}
-            disabled={pending}
-            className="rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-brand-900 ring-1 ring-inset ring-sun-200 hover:bg-sun-100 disabled:opacity-50"
-          >
-            Sugerir cidade pela descrição
-          </button>
-        </p>
+        </div>
       )}
 
       <Panel title={activeLabel ? `Situação das notas · ${activeLabel}` : "Situação das notas"}>
