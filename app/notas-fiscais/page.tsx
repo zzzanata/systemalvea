@@ -1,6 +1,4 @@
-import InvoiceGrid from "@/components/InvoiceGrid";
-import InvoiceRings from "@/components/InvoiceRings";
-import Panel from "@/components/Panel";
+import InvoicesView from "@/components/InvoicesView";
 import { requireAdmin } from "@/lib/auth";
 import { todayBR } from "@/lib/dates";
 import { getInvoices, getProjectOptions } from "@/lib/data";
@@ -25,11 +23,7 @@ export default async function InvoicesPage() {
         </p>
       </header>
 
-      <Panel title="Situação das notas">
-        <InvoiceRings summary={summary} />
-      </Panel>
-
-      <InvoiceGrid invoices={invoices} projects={projects} today={today} />
+      <InvoicesView invoices={invoices} projects={projects} today={today} />
     </div>
   );
 }

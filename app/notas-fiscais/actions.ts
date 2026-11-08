@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { parseDay, todayBR } from "@/lib/dates";
 import { parseNumber, round2 } from "@/lib/form";
+import { cleanCity } from "@/lib/cities";
 import { normalizeAccessKey, normalizeCnpj } from "@/lib/invoices";
 import type { MutationResult } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export type InvoiceInput = {
   senderCnpj: string;
   recipientName: string;
   recipientCnpj: string;
+  city: string;
   projectId: string;
 };
 
@@ -66,6 +68,7 @@ function parseInput(input: InvoiceInput): Parsed {
       senderCnpj: senderCnpj || null,
       recipientName: input.recipientName.trim() || null,
       recipientCnpj: recipientCnpj || null,
+      city: cleanCity(input.city ?? "") || null,
       projectId: input.projectId || null,
     },
   };
@@ -194,4 +197,30 @@ export async function importInvoices(inputs: InvoiceInput[]): Promise<ImportResu
 
   if (created > 0) refresh();
   return { success: true, created, skipped, failed };
+}
+
+/** Define a cidade de várias notas de uma vez (usado no "Cidade em lote" e em "Sugerir cidades"). */
+export async function assignCities(items: { ids: string[]; city: string }[]): Promise<MutationResult> {
+  await requireAdmin();
+  if (!Array.isArray(items) || items.length === 0) return { error: "Nada para atualizar." };
+
+  let total = 0;
+  for (const it of items) total += it.ids?.length ?? 0;
+  if (total === 0 || total > 1000) return { error: "Escolha de 1 a 1000 notas." };
+
+  try {
+    await prisma.$transaction(
+      items.map((it) =>
+        prisma.invoice.updateMany({
+          where: { id: { in: it.ids } },
+          data: { city: cleanCity(it.city) || null },
+        }),
+      ),
+    );
+  } catch (e) {
+    return failure(e, "Não foi possível definir a cidade.");
+  }
+
+  refresh();
+  return { success: true };
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  assignCities,
   createInvoice,
   deleteInvoice,
   setInvoicePaid,
@@ -11,6 +12,7 @@ import {
 import Badge, { type BadgeTone } from "@/components/Badge";
 import InvoiceImport from "@/components/InvoiceImport";
 import { CheckIcon, CloseIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
+import { cleanCity } from "@/lib/cities";
 import { formatAccessKey, formatCnpj, normalizeAccessKey, shownStatus } from "@/lib/invoices";
 import {
   brl,
@@ -21,7 +23,7 @@ import {
   type ProjectOption,
 } from "@/lib/types";
 
-type SortKey = "issuedAt" | "type" | "number" | "recipient" | "description" | "amount" | "dueDate" | "status";
+type SortKey = "issuedAt" | "type" | "number" | "recipient" | "city" | "description" | "amount" | "dueDate" | "status";
 
 // Tabela enxuta: o resto das informações aparece ao clicar na nota.
 const cols: { key: SortKey; label: string; cls: string }[] = [
@@ -29,6 +31,7 @@ const cols: { key: SortKey; label: string; cls: string }[] = [
   { key: "type", label: "Tipo", cls: "hidden md:table-cell" },
   { key: "number", label: "Nº", cls: "hidden md:table-cell" },
   { key: "recipient", label: "Destinatário", cls: "" },
+  { key: "city", label: "Cidade", cls: "hidden xl:table-cell" },
   { key: "description", label: "Descrição", cls: "hidden lg:table-cell" },
   { key: "amount", label: "Valor", cls: "text-right" },
   { key: "dueDate", label: "Vencimento", cls: "hidden lg:table-cell" },
@@ -49,7 +52,7 @@ const dmy = (d: string) => (d ? d.split("-").reverse().join("/") : "—");
 
 type Draft = InvoiceInput;
 
-function emptyDraft(today: string): Draft {
+function emptyDraft(today: string, city = ""): Draft {
   return {
     type: "IN",
     number: "",
@@ -64,6 +67,7 @@ function emptyDraft(today: string): Draft {
     senderCnpj: "",
     recipientName: "",
     recipientCnpj: "",
+    city,
     projectId: "",
   };
 }
@@ -84,6 +88,7 @@ function toDraft(r: InvoiceRecord): Draft {
     senderCnpj: formatCnpj(r.senderCnpj),
     recipientName: r.recipientName,
     recipientCnpj: formatCnpj(r.recipientCnpj),
+    city: r.city,
     projectId: r.projectId,
   };
 }
@@ -97,23 +102,33 @@ type Panel = { mode: "view" | "edit"; id: string } | { mode: "new" } | { mode: "
 
 export default function InvoiceGrid({
   invoices,
+  allInvoices,
   projects,
   today,
+  cities = [],
+  defaultCity = "",
 }: {
   invoices: InvoiceRecord[];
+  /** Todas as notas (de todas as cidades): usadas para achar o CNPJ da empresa e detectar duplicadas. */
+  allInvoices?: InvoiceRecord[];
   projects: ProjectOption[];
   today: string;
+  /** Cidades já usadas, para sugerir ao digitar. */
+  cities?: string[];
+  /** Cidade da aba aberta: já vem preenchida em notas novas e importadas. */
+  defaultCity?: string;
 }) {
+  const universe = allInvoices ?? invoices;
   // CNPJ da empresa: o que mais aparece como emitente nas entradas e como destinatário nas saídas.
   const companyCnpj = useMemo(() => {
     const count = new Map<string, number>();
-    for (const i of invoices) {
+    for (const i of universe) {
       const c = i.type === "IN" ? i.senderCnpj : i.recipientCnpj;
       if (c) count.set(c, (count.get(c) ?? 0) + 1);
     }
     return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-  }, [invoices]);
-  const existingKeys = useMemo(() => invoices.map((i) => i.accessKey).filter(Boolean), [invoices]);
+  }, [universe]);
+  const existingKeys = useMemo(() => universe.map((i) => i.accessKey).filter(Boolean), [universe]);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -148,7 +163,7 @@ export default function InvoiceGrid({
         if (typeFilter && r.type !== typeFilter) return false;
         if (statusFilter && shown !== statusFilter) return false;
         if (!term) return true;
-        const text = [r.description, r.number, r.senderName, r.recipientName, r.projectName]
+        const text = [r.description, r.number, r.senderName, r.recipientName, r.projectName, r.city]
           .join(" ")
           .toLowerCase();
         const ids = (r.accessKey + r.senderCnpj + r.recipientCnpj).toLowerCase();
@@ -166,6 +181,8 @@ export default function InvoiceGrid({
             return r.number;
           case "recipient":
             return r.recipientName.toLowerCase();
+          case "city":
+            return r.city.toLowerCase();
           case "description":
             return r.description.toLowerCase();
           case "amount":
@@ -209,7 +226,7 @@ export default function InvoiceGrid({
   }
 
   function openNew() {
-    setDraft(emptyDraft(today));
+    setDraft(emptyDraft(today, defaultCity));
     setError("");
     setPanel({ mode: "new" });
   }
@@ -264,18 +281,34 @@ export default function InvoiceGrid({
     }
   }
 
+  // Define a mesma cidade para todas as notas que estão na tela (respeita busca e filtros).
+  function bulkCity() {
+    if (rows.length === 0) return;
+    const input = window.prompt(
+      `Qual a cidade das ${rows.length} nota(s) que estão na tela?\n(Use a busca para filtrar antes, por exemplo "LARANJAL". Deixe vazio para remover a cidade.)`,
+      defaultCity,
+    );
+    if (input === null) return;
+    const city = cleanCity(input);
+    if (!confirm(`${city ? `Definir "${city}"` : "Remover a cidade"} em ${rows.length} nota(s)?`)) return;
+    startTransition(async () => {
+      const result = await assignCities([{ ids: rows.map(({ r }) => r.id), city }]);
+      if ("error" in result) alert(result.error);
+    });
+  }
+
   function exportCsv() {
     const head = [
       "Emissão", "Tipo", "Nº da nota", "Chave de acesso", "Descrição", "Valor", "Vencimento",
       "Status", "Data do pagamento", "Remetente", "CNPJ/CPF remetente", "Destinatário",
-      "CNPJ/CPF destinatário", "Obra",
+      "CNPJ/CPF destinatário", "Cidade", "Obra",
     ];
     const lines = rows.map(({ r, shown }) =>
       [
         dmy(r.issuedAt), invoiceTypeLabel[r.type], r.number, r.accessKey, r.description,
         r.amount.toFixed(2).replace(".", ","), dmy(r.dueDate), invoiceShownLabel[shown],
         dmy(r.paidAt), r.senderName, formatCnpj(r.senderCnpj), r.recipientName,
-        formatCnpj(r.recipientCnpj), r.projectName,
+        formatCnpj(r.recipientCnpj), r.city, r.projectName,
       ]
         .map(csvCell)
         .join(";"),
@@ -314,6 +347,9 @@ export default function InvoiceGrid({
           <option value="PAID">Pago</option>
           <option value="CANCELED">Cancelada</option>
         </select>
+        <button type="button" onClick={bulkCity} disabled={pending || rows.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40" title="Define a cidade de todas as notas que estão na tela">
+          Cidade em lote
+        </button>
         <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" title="Baixa as linhas filtradas para abrir no Excel">
           <DownloadIcon className="h-4 w-4" /> Exportar
         </button>
@@ -363,6 +399,9 @@ export default function InvoiceGrid({
                     {r.recipientName || "—"}
                   </p>
                   <p className="truncate text-xs text-slate-500 lg:hidden">{r.description}</p>
+                </td>
+                <td className="hidden max-w-[130px] px-2 py-3 sm:px-3 xl:table-cell">
+                  <p className="truncate text-slate-600" title={r.city}>{r.city || "—"}</p>
                 </td>
                 <td className="hidden max-w-[200px] px-2 py-3 sm:px-3 lg:table-cell">
                   <p className="truncate text-slate-600" title={r.description}>{r.description}</p>
@@ -433,7 +472,7 @@ export default function InvoiceGrid({
             className="relative flex h-full w-full max-w-lg animate-gtg-slide flex-col bg-white shadow-2xl"
           >
             {panel.mode === "import" ? (
-              <InvoiceImport companyCnpj={companyCnpj} existingKeys={existingKeys} onClose={() => setPanel(null)} />
+              <InvoiceImport companyCnpj={companyCnpj} existingKeys={existingKeys} cities={cities} defaultCity={defaultCity} onClose={() => setPanel(null)} />
             ) : panel.mode === "view" && selected ? (
               <Details
                 r={selected}
@@ -452,6 +491,7 @@ export default function InvoiceGrid({
                 draft={draft}
                 set={set}
                 projects={projects}
+                cities={cities}
                 error={error}
                 pending={pending}
                 onSave={save}
@@ -533,6 +573,7 @@ function Details({
             <span className={shown === "OVERDUE" ? "font-medium text-red-600" : ""}>{dmy(r.dueDate)}</span>
           </Item>
           {r.status === "PAID" && <Item label="Pago em">{dmy(r.paidAt)}</Item>}
+          <Item label="Cidade">{r.city || "—"}</Item>
           <Item label="Obra">{r.projectName || "—"}</Item>
         </dl>
 
@@ -588,6 +629,7 @@ function Form({
   draft,
   set,
   projects,
+  cities,
   error,
   pending,
   onSave,
@@ -597,6 +639,7 @@ function Form({
   draft: Draft;
   set: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
   projects: ProjectOption[];
+  cities: string[];
   error: string;
   pending: boolean;
   onSave: () => void;
@@ -662,6 +705,22 @@ function Form({
         {label("Razão social", <input value={draft.recipientName} onChange={(e) => set("recipientName", e.target.value)} className={field} />)}
         {label("CNPJ/CPF", <input value={draft.recipientCnpj} onChange={(e) => set("recipientCnpj", formatCnpj(e.target.value))} className={`${field} font-mono`} />)}
 
+        {label("Cidade", (
+          <>
+            <input
+              value={draft.city}
+              onChange={(e) => set("city", e.target.value)}
+              list="cidades-notas"
+              placeholder="Ex.: Laranjal Paulista - SP"
+              className={field}
+            />
+            <datalist id="cidades-notas">
+              {cities.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </>
+        ), true)}
         {label("Obra (opcional)", (
           <select value={draft.projectId} onChange={(e) => set("projectId", e.target.value)} className={field}>
             <option value="">Sem obra</option>

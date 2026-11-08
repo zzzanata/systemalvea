@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { importInvoices, type InvoiceInput } from "@/app/notas-fiscais/actions";
 import { CloseIcon, DownloadIcon } from "@/components/Icons";
 import Badge from "@/components/Badge";
+import { cleanCity, guessCity } from "@/lib/cities";
 import { formatCnpj, normalizeAccessKey, normalizeCnpj } from "@/lib/invoices";
 import { parseNotaXml, type ParsedNota } from "@/lib/nfe";
 import { parseNotaPdf } from "@/lib/nfePdf";
@@ -13,6 +14,7 @@ type Row = {
   file: string;
   nota?: ParsedNota;
   fromPdf?: boolean;
+  city: string;
   error?: string;
   duplicate?: boolean;
   type: "IN" | "OUT";
@@ -24,11 +26,15 @@ const dmy = (d: string) => (d ? d.split("-").reverse().join("/") : "—");
 export default function InvoiceImport({
   companyCnpj,
   existingKeys,
+  cities,
+  defaultCity,
   onClose,
 }: {
   /** CNPJ da empresa, deduzido das notas já cadastradas ("" se ainda não dá para saber). */
   companyCnpj: string;
   existingKeys: string[];
+  cities: string[];
+  defaultCity: string;
   onClose: () => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
@@ -57,7 +63,7 @@ export default function InvoiceImport({
     for (const f of Array.from(files)) {
       const isPdf = /\.pdf$/i.test(f.name);
       if (!isPdf && !/\.xml$/i.test(f.name)) {
-        next.push({ file: f.name, error: "Envie o arquivo da nota em XML ou PDF.", type: "OUT", autoType: false });
+        next.push({ file: f.name, error: "Envie o arquivo da nota em XML ou PDF.", type: "OUT", autoType: false, city: "" });
         continue;
       }
       try {
@@ -65,9 +71,9 @@ export default function InvoiceImport({
         if (!nota.amount || Number(nota.amount) <= 0) throw new Error("Não consegui ler o valor da nota. Use o XML.");
         const { type, auto } = detect(nota, myCnpj, defaultType);
         const key = normalizeAccessKey(nota.accessKey);
-        next.push({ file: f.name, nota, fromPdf: isPdf, type, autoType: auto, duplicate: key ? keys.has(key) : false });
+        next.push({ file: f.name, nota, fromPdf: isPdf, city: guessCity(nota.description, cities) || defaultCity, type, autoType: auto, duplicate: key ? keys.has(key) : false });
       } catch (e) {
-        next.push({ file: f.name, error: (e as Error).message, type: "OUT", autoType: false });
+        next.push({ file: f.name, error: (e as Error).message, type: "OUT", autoType: false, city: "" });
       }
     }
     // A mesma nota enviada duas vezes na seleção também conta como repetida.
@@ -112,6 +118,7 @@ export default function InvoiceImport({
         senderCnpj: n.senderCnpj,
         recipientName: n.recipientName,
         recipientCnpj: n.recipientCnpj,
+        city: cleanCity(r.city),
         projectId: "",
       };
     });
@@ -234,6 +241,14 @@ export default function InvoiceImport({
                           <option value="OUT">Saída</option>
                         </select>
                       )}
+                      <input
+                        value={r.city}
+                        onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, city: e.target.value } : x)))}
+                        list="cidades-import"
+                        placeholder="Cidade"
+                        aria-label="Cidade"
+                        className="w-36 rounded-md border border-slate-200 px-2 py-1 text-xs"
+                      />
                       {r.fromPdf && <span className="text-[11px] text-amber-600">lido do PDF, confira os dados</span>}
                       {!r.duplicate && r.autoType && <span className="text-[11px] text-slate-400">detectado pelo CNPJ</span>}
                       <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} className="ml-auto text-xs text-slate-400 hover:text-red-600">
@@ -257,6 +272,12 @@ export default function InvoiceImport({
           </ul>
         )}
       </div>
+
+      <datalist id="cidades-import">
+        {cities.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
 
       <footer className="space-y-2 border-t border-slate-200 p-4">
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

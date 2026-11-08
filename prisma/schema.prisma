@@ -243,10 +243,12 @@ model Invoice {
   senderCnpj    String?
   recipientName String?
   recipientCnpj String?
+  city          String?
 
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([status, dueDate])
+  @@index([city])
   @@index([projectId])
   @@index([type])
 }

@@ -170,6 +170,7 @@ export type InvoiceRecord = {
   senderCnpj: string;
   recipientName: string;
   recipientCnpj: string;
+  city: string;
   projectId: string;
   projectName: string;
 };

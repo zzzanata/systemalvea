@@ -271,6 +271,7 @@ export async function getInvoices(): Promise<InvoiceRecord[]> {
     senderCnpj: i.senderCnpj ?? "",
     recipientName: i.recipientName ?? "",
     recipientCnpj: i.recipientCnpj ?? "",
+    city: i.city ?? "",
     projectId: i.projectId ?? "",
     projectName: i.project?.name ?? "",
   }));
