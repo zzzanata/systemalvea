@@ -46,6 +46,17 @@ function below(items: TextItem[], label: TextItem, maxGap = 28): string {
   return best?.str ?? "";
 }
 
+// Valor na mesma linha, à direita do rótulo (alguns PDFs usam "Rótulo   Valor" em vez de grade).
+function beside(items: TextItem[], label: TextItem): string {
+  let best: TextItem | null = null;
+  for (const it of items) {
+    if (it.page !== label.page || it === label) continue;
+    if (Math.abs(it.y - label.y) > 3 || it.x <= label.x + label.w - 1) continue;
+    if (!best || it.x < best.x) best = it;
+  }
+  return best?.str ?? "";
+}
+
 const findLabels = (items: TextItem[], text: string) =>
   items.filter((i) => norm(i.str).includes(norm(text)));
 
@@ -63,6 +74,12 @@ export function parseDanfeItems(items: TextItem[]): ParsedNota {
   // Ordem de leitura: página, de cima para baixo, esquerda para direita.
   const sorted = [...items].sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
   const flat = sorted.map((i) => i.str).join(" ");
+
+  // NFS-e (nota de serviço): chave de 50 dígitos e textos próprios.
+  const flatN = norm(flat);
+  if (/\d{50}/.test(flat.replace(/(\d)\s+(?=\d)/g, "$1")) || /DANFSE|NFS-?E\b|NOTA FISCAL DE SERVICO/.test(flatN)) {
+    return parseDanfse(items, flat);
+  }
 
   // Chave de acesso: 44 dígitos (aparece com espaços de 4 em 4).
   const keyMatch = flat.replace(/(\d)\s+(?=\d)/g, "$1").match(/\d{44}/);
@@ -115,6 +132,86 @@ export function parseDanfeItems(items: TextItem[]): ParsedNota {
     amount,
     issuedAt,
     dueDate,
+    senderName,
+    senderCnpj,
+    recipientName,
+    recipientCnpj,
+  };
+}
+
+// ---- NFS-e (DANFSe, padrão nacional ou municipal) ----
+// Chave nacional: 50 dígitos = município(7) + ambiente(1) + tipo(1) + CNPJ(14) + nº da nota(13) + AAMM(4) + ...
+function parseDanfse(items: TextItem[], flat: string): ParsedNota {
+  const digits = flat.replace(/(\d)\s+(?=\d)/g, "$1");
+  const key50 = digits.match(/\d{50}/)?.[0] ?? "";
+
+  const labelValue = (...labels: string[]) => {
+    for (const l of labels) {
+      for (const lab of findLabels(items, l)) {
+        const inside = money(lab.str);
+        const v = below(items, lab, 24) || beside(items, lab);
+        const m = money(v) || inside;
+        if (m) return m;
+      }
+    }
+    return "";
+  };
+  const textValue = (...labels: string[]) => {
+    for (const l of labels) {
+      for (const lab of findLabels(items, l)) {
+        const v = below(items, lab, 24) || beside(items, lab);
+        if (v) return v;
+      }
+    }
+    return "";
+  };
+  // Primeiro rótulo que aparece DEPOIS de um título de seção (ex.: "EMITENTE" -> CNPJ).
+  const inSection = (title: string, label: string) => {
+    const t = findLabels(items, title)[0];
+    if (!t) return "";
+    const cands = findLabels(items, label)
+      .filter((l) => l.page > t.page || (l.page === t.page && l.y <= t.y + 2))
+      .sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
+    for (const c of cands) {
+      const v = below(items, c, 24) || beside(items, c);
+      if (v) return v;
+    }
+    return "";
+  };
+
+  const amount = labelValue(
+    "VALOR LIQUIDO DA NFS", "VALOR LIQUIDO", "VALOR DO SERVICO", "VALOR TOTAL DA NFS",
+    "VALOR TOTAL DO SERVICO", "VALOR DOS SERVICOS", "VALOR TOTAL",
+  );
+
+  const numberText = textValue("NUMERO DA NFS", "NUMERO DA NOTA", "NUMERO");
+  const number = (numberText.match(/\d+/)?.[0] ?? "").replace(/^0+(?=\d)/, "") ||
+    (key50 ? String(Number(key50.slice(23, 36))) : "");
+
+  const issued = textValue("DATA E HORA DA EMISSAO", "DATA DE EMISSAO", "DATA DA EMISSAO", "EMISSAO") ||
+    flat.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || "";
+
+  const senderCnpj =
+    inSection("EMITENTE", "CNPJ").replace(/[^0-9A-Za-z]/g, "") ||
+    inSection("PRESTADOR", "CNPJ").replace(/[^0-9A-Za-z]/g, "") ||
+    (key50 ? key50.slice(9, 23) : "");
+  const senderName =
+    inSection("EMITENTE", "NOME") || inSection("EMITENTE", "RAZAO SOCIAL") ||
+    inSection("PRESTADOR", "RAZAO SOCIAL") || inSection("PRESTADOR", "NOME");
+  const recipientName =
+    inSection("TOMADOR", "NOME") || inSection("TOMADOR", "RAZAO SOCIAL");
+  const recipientCnpj = (inSection("TOMADOR", "CNPJ") || inSection("TOMADOR", "CPF")).replace(/[^0-9A-Za-z]/g, "");
+
+  const desc = textValue("DESCRICAO DO SERVICO", "DISCRIMINACAO DO SERVICO", "DISCRIMINACAO");
+
+  return {
+    kind: "NFS-e",
+    number,
+    accessKey: key50,
+    description: (desc || `NFS-e ${number}`).replace(/\s+/g, " ").slice(0, 140),
+    amount,
+    issuedAt: dmyToIso(issued),
+    dueDate: "",
     senderName,
     senderCnpj,
     recipientName,
