@@ -1,25 +1,33 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { getCurrentUser } from "@/lib/auth";
 
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600"],
   display: "swap",
-  variable: "--font-poppins",
+  variable: "--font-inter",
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-newsreader",
 });
 
 export const metadata: Metadata = {
-  title: "GTG Energia | Gestão de Obras",
-  description: "Gestão de obras da GTG Energia",
+  title: "Alvéa Odontologia | Sistema",
+  description: "Agenda, orçamentos e financeiro da Alvéa Odontologia",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#000a73",
+  themeColor: "#26332F",
 };
 
 export default async function RootLayout({
@@ -30,8 +38,8 @@ export default async function RootLayout({
   const user = await getCurrentUser();
 
   return (
-    <html lang="pt-BR" className={poppins.variable}>
-      <body className="bg-brand-50 font-sans text-slate-900 antialiased">
+    <html lang="pt-BR" className={`${inter.variable} ${newsreader.variable}`}>
+      <body className="bg-sand-50 font-sans text-ink-900 antialiased">
         {user ? (
           <div className="flex min-h-screen flex-col md:flex-row">
             <Sidebar user={{ name: user.name, role: user.role }} />

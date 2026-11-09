@@ -7,17 +7,15 @@ datasource db {
   provider = "postgresql"
 }
 
-// ---------- Estoque ----------
+// Valores em dinheiro: Decimal(12, 2). Datas de calendário (vencimento, nascimento)
+// ficam ao meio-dia UTC (ver lib/dates.ts); horários de consulta são DateTime normais.
 
+// ---------- Usuários e histórico ----------
+
+// Os dois perfis têm acesso total; o perfil só identifica quem é quem.
 enum Role {
-  ADMIN
-  OPERATOR
-}
-
-enum MovementType {
-  IN
-  OUT
-  ADJUSTMENT
+  DENTIST
+  RECEPTION
 }
 
 model User {
@@ -25,230 +23,249 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  role         Role     @default(OPERATOR)
-  createdAt    DateTime @default(now())
-
-  movements    StockMovement[]
-  tasksUpdated Task[]          @relation("TaskUpdatedBy")
-}
-
-model Category {
-  id   String @id @default(cuid())
-  name String @unique
-
-  products Product[]
-}
-
-model Product {
-  id           String   @id @default(cuid())
-  sku          String   @unique
-  name         String
-  categoryId   String?
-  unit         String   @default("un")
-  // Custo médio ponderado: recalculado a cada entrada com valor.
-  costPrice    Decimal  @default(0) @db.Decimal(14, 4)
-  salePrice    Decimal  @default(0) @db.Decimal(12, 2)
-  minStock     Decimal  @default(0) @db.Decimal(12, 3)
-  currentStock Decimal  @default(0) @db.Decimal(12, 3)
+  role         Role     @default(RECEPTION)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
-  category  Category?       @relation(fields: [categoryId], references: [id])
-  movements StockMovement[]
+  auditLogs AuditLog[]
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+// Histórico de alterações: toda gravação feita pelo sistema deixa uma linha aqui.
+// userName e entityLabel são cópias (continuam legíveis mesmo se o registro for apagado).
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  userName    String
+  action      AuditAction
+  entity      String // "patient", "appointment", "budget", "receivable"...
+  entityId    String
+  entityLabel String // ex.: nome do paciente, "Orçamento #12"
+  summary     String // frase pronta para a tela
+  // Campos alterados: { campo: { from, to } } (valores já formatados para leitura).
+  changes     Json?
+  createdAt   DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([userId])
+}
+
+// ---------- Pacientes e procedimentos ----------
+
+model Patient {
+  id        String    @id @default(cuid())
+  name      String
+  cpf       String?   @unique
+  phone     String?
+  email     String?
+  birthDate DateTime?
+  address   String?
+  notes     String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  appointments Appointment[]
+  budgets      Budget[]
+  receivables  Receivable[]
 
   @@index([name])
-  @@index([categoryId])
 }
 
-model StockMovement {
-  id        String       @id @default(cuid())
-  productId String
-  userId    String
-  type      MovementType
-  quantity  Decimal      @db.Decimal(12, 3)
-  reason    String?
-  note      String?
-  // Entrada: valor unitário pago. Saída/ajuste: custo médio no momento. Nulo nos lançamentos antigos.
-  unitCost      Decimal?     @db.Decimal(14, 4)
-  supplierId    String?
-  invoiceNumber String?
-  createdAt DateTime     @default(now())
-
-  product  Product   @relation(fields: [productId], references: [id])
-  user     User      @relation(fields: [userId], references: [id])
-  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-
-  @@index([productId, createdAt])
-  @@index([userId])
-  @@index([supplierId])
-}
-
-model Supplier {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-
-  movements StockMovement[]
-}
-
-// ---------- Obras (usinas) ----------
-
-enum ProjectStatus {
-  ACTIVE
-  ON_HOLD
-  DONE
-}
-
-enum TaskStatus {
-  TODO
-  DOING
-  DONE
-}
-
-enum MemberRole {
-  LEAD
-  MEMBER
-}
-
-// Uma obra / usina.
-model Project {
-  id          String        @id @default(cuid())
-  name        String
-  location    String?
-  powerKwp    Decimal?      @db.Decimal(12, 2)
-  startDate   DateTime?
-  expectedEnd DateTime?
-  status      ProjectStatus @default(ACTIVE)
-  createdAt   DateTime      @default(now())
-
-  tasks    Task[]
-  team     TeamMember[]
-  entries  FinanceEntry[]
-  invoices Invoice[]
-}
-
-// Item do checklist da obra. A etapa é só um nome de grupo (stage).
-model Task {
-  id          String     @id @default(cuid())
-  projectId   String
-  stage       String
-  title       String
-  status      TaskStatus @default(TODO)
-  position    Int
-  updatedAt   DateTime   @updatedAt
-  updatedById String?
-
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  updatedBy User?   @relation("TaskUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-
-  @@index([projectId, position])
-}
-
-// Quem trabalha na obra (não precisa ter login no sistema).
-model TeamMember {
-  id        String     @id @default(cuid())
-  projectId String
-  name      String
-  role      MemberRole @default(MEMBER)
-  jobTitle  String?
-  createdAt DateTime   @default(now())
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-}
-
-// Cadastro de funcionários da empresa (separado de quem tem login e da equipe de cada obra).
-model Employee {
+// Tabela de preços da clínica.
+model Procedure {
   id          String   @id @default(cuid())
-  fullName    String
-  jobTitle    String
-  dailyRate   Decimal? @db.Decimal(12, 2)
-  monthlyRate Decimal? @db.Decimal(12, 2)
+  name        String   @unique
+  price       Decimal  @default(0) @db.Decimal(12, 2)
+  durationMin Int      @default(30)
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([fullName])
+  appointments Appointment[]
+  budgetItems  BudgetItem[]
 }
 
-// ---------- Financeiro ----------
+// ---------- Agenda ----------
 
-enum EntryType {
-  REVENUE
-  COST
-}
-
-// Status guardado. Na tela: PENDING/ISSUED = "Pendente" (vira "Vencido" sozinho
-// quando passa do vencimento), PAID = "Pago", CANCELED = "Cancelada".
-// ISSUED e o PENDING antigo ("a emitir") continuam existindo para não perder dados.
-enum InvoiceStatus {
-  PENDING
-  ISSUED
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  DONE
+  NO_SHOW
   CANCELED
-  PAID
 }
 
-enum InvoiceType {
-  IN  // entrada: nota emitida pela empresa (dinheiro a receber)
-  OUT // saída: nota de despesa (a pagar)
+model Appointment {
+  id          String            @id @default(cuid())
+  patientId   String
+  procedureId String?
+  startsAt    DateTime
+  endsAt      DateTime
+  status      AppointmentStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  procedure Procedure? @relation(fields: [procedureId], references: [id], onDelete: SetNull)
+
+  @@index([startsAt])
+  @@index([patientId])
 }
 
-// Categorias das movimentações (hotel, combustível, funcionários...).
-model FinanceCategory {
+// Horário bloqueado na agenda (almoço, folga, feriado, curso...).
+model ScheduleBlock {
   id        String   @id @default(cuid())
-  name      String   @unique
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String
   createdAt DateTime @default(now())
 
-  entries FinanceEntry[]
+  @@index([startsAt])
 }
 
-// Movimentação: entrada de dinheiro (REVENUE = faturamento) ou saída (COST = custo).
-// amount é sempre o TOTAL (quantidade x valor unitário); é ele que alimenta os gráficos.
-model FinanceEntry {
-  id          String    @id @default(cuid())
-  projectId   String?
-  type        EntryType
-  amount      Decimal   @db.Decimal(14, 2)
-  date        DateTime
-  description String
-  createdAt   DateTime  @default(now())
+// ---------- Orçamentos ----------
 
-  categoryId String?
-  quantity   Decimal  @default(1) @db.Decimal(12, 3)
-  unitValue  Decimal? @db.Decimal(14, 2)
-
-  project  Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  category FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  @@index([date])
-  @@index([projectId])
-  @@index([categoryId])
+enum BudgetStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
 }
 
-model Invoice {
-  id          String        @id @default(cuid())
-  projectId   String?
-  number      String?
+model Budget {
+  id         String       @id @default(cuid())
+  number     Int          @unique @default(autoincrement())
+  patientId  String
+  status     BudgetStatus @default(DRAFT)
+  discount   Decimal      @default(0) @db.Decimal(12, 2)
+  validUntil DateTime?
+  notes      String?
+  approvedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  items       BudgetItem[]
+  receivables Receivable[]
+
+  @@index([patientId])
+  @@index([status])
+}
+
+model BudgetItem {
+  id          String  @id @default(cuid())
+  budgetId    String
+  procedureId String?
   description String
-  amount      Decimal       @db.Decimal(14, 2)
-  status      InvoiceStatus @default(PENDING)
-  dueDate     DateTime?
-  issuedAt    DateTime?
-  createdAt   DateTime      @default(now())
+  tooth       String? // dente ou região (ex.: "36", "arcada superior")
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  position    Int     @default(0)
 
-  type          InvoiceType @default(OUT)
-  accessKey     String?     @unique
-  paidAt        DateTime?
-  senderName    String?
-  senderCnpj    String?
-  recipientName String?
-  recipientCnpj String?
-  city          String?
+  budget    Budget     @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  procedure Procedure? @relation(fields: [procedureId], references: [id], onDelete: SetNull)
 
-  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  @@index([budgetId, position])
+}
+
+// ---------- Financeiro (particular) ----------
+
+enum PaymentMethod {
+  PIX
+  CASH
+  DEBIT
+  CREDIT
+  BOLETO
+  TRANSFER
+}
+
+// Situação gravada. "Vencida" é calculada na tela (aberta e com vencimento passado);
+// "parcialmente paga" também (soma dos pagamentos menor que o valor).
+enum BillStatus {
+  OPEN
+  PAID
+  CANCELED
+}
+
+// Conta a receber: uma parcela de um tratamento/orçamento ou uma cobrança avulsa.
+model Receivable {
+  id           String     @id @default(cuid())
+  patientId    String?
+  budgetId     String?
+  description  String
+  installment  Int        @default(1) // número da parcela
+  installments Int        @default(1) // total de parcelas
+  amount       Decimal    @db.Decimal(12, 2)
+  dueDate      DateTime
+  status       BillStatus @default(OPEN)
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  budget   Budget?   @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+  payments Payment[]
 
   @@index([status, dueDate])
-  @@index([city])
-  @@index([projectId])
-  @@index([type])
+  @@index([patientId])
+  @@index([budgetId])
+}
+
+// Recebimento (pode haver vários por parcela: pagamento parcial).
+model Payment {
+  id           String        @id @default(cuid())
+  receivableId String
+  amount       Decimal       @db.Decimal(12, 2)
+  paidAt       DateTime
+  method       PaymentMethod
+  // Taxa da maquininha/banco descontada (opcional): o líquido é amount - fee.
+  fee          Decimal       @default(0) @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime      @default(now())
+
+  receivable Receivable @relation(fields: [receivableId], references: [id], onDelete: Cascade)
+
+  @@index([paidAt])
+  @@index([receivableId])
+}
+
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  expenses Expense[]
+}
+
+// Conta a pagar (despesa da clínica). Despesas mensais repetidas compartilham recurrenceId.
+model Expense {
+  id           String         @id @default(cuid())
+  categoryId   String?
+  description  String
+  supplier     String?
+  amount       Decimal        @db.Decimal(12, 2)
+  dueDate      DateTime
+  status       BillStatus     @default(OPEN)
+  paidAt       DateTime?
+  method       PaymentMethod?
+  recurrenceId String?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([status, dueDate])
+  @@index([categoryId])
+  @@index([recurrenceId])
 }

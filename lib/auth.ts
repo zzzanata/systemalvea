@@ -23,15 +23,16 @@ export async function destroySession() {
   store.delete(SESSION_COOKIE);
 }
 
-// O perfil (role) vem sempre do banco, então mudanças de permissão valem na hora
-// e um usuário removido perde o acesso mesmo com o cookie ainda válido.
+// Os dados do usuário vêm sempre do banco (não do cookie).
+// Dentista e recepção têm acesso total, então não há checagem de perfil.
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const store = await cookies();
   const session = await verifySession(store.get(SESSION_COOKIE)?.value);
   if (!session) return null;
 
-  return prisma.user.findUnique({
-    where: { id: session.userId },
+  // Usuário desativado perde o acesso na hora, mesmo com o cookie ainda válido.
+  return prisma.user.findFirst({
+    where: { id: session.userId, active: true },
     select: { id: true, name: true, email: true, role: true },
   });
 });
@@ -43,8 +44,3 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
-export async function requireAdmin(): Promise<CurrentUser> {
-  const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/");
-  return user;
-}

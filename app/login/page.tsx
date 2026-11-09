@@ -1,24 +1,16 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import LoginForm from "@/components/LoginForm";
+import Logo from "@/components/Logo";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-// Células do painel solar decorativo (6 x 5). O atraso de cada uma é "embaralhado" para
-// o brilho parecer aleatório, mas é sempre o mesmo (nada de Math.random no servidor).
-const cells = Array.from({ length: 30 }, (_, i) => ({ i, delay: ((i * 733) % 4200) / 1000 }));
-const sparks = [
-  { left: "6%", size: 9, delay: 0, dur: 9, blur: 0 },
-  { left: "15%", size: 14, delay: 3.2, dur: 12, blur: 3 },
-  { left: "26%", size: 6, delay: 5.5, dur: 10, blur: 0 },
-  { left: "38%", size: 11, delay: 1.2, dur: 8, blur: 1 },
-  { left: "50%", size: 16, delay: 4.4, dur: 13, blur: 4 },
-  { left: "61%", size: 8, delay: 2.4, dur: 9, blur: 0 },
-  { left: "72%", size: 12, delay: 6.8, dur: 11, blur: 2 },
-  { left: "83%", size: 7, delay: 0.8, dur: 10, blur: 0 },
-  { left: "92%", size: 15, delay: 3.8, dur: 12, blur: 3 },
-  { left: "44%", size: 6, delay: 7.5, dur: 9, blur: 0 },
+// Arcos concêntricos (o desenho da logo) que formam o fundo do lado da marca.
+const arches = [
+  { r: 260, w: 1.2, o: 0.18, d: 0 },
+  { r: 205, w: 1.2, o: 0.24, d: 0.15 },
+  { r: 150, w: 1.4, o: 0.32, d: 0.3 },
+  { r: 95, w: 1.6, o: 0.5, d: 0.45 },
 ];
 
 export default async function LoginPage() {
@@ -26,96 +18,60 @@ export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
 
   return (
-    <div data-gtg-own className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
-      {/* Lado da marca: azul-marinho com sol, painel solar e partículas de energia. */}
-      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
-        {/* Textura: grade de pontos deslizando + faixas de luz que atravessam */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 animate-gtg-pan opacity-70 [background-image:radial-gradient(rgba(0,6,40,0.55)_1.5px,transparent_1.9px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_30%_60%,black_25%,transparent_80%)]"
-        />
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <span className="absolute inset-y-[-10%] left-0 w-1/4 animate-gtg-beam bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
-          <span className="absolute inset-y-[-10%] left-0 w-[12%] animate-gtg-beam bg-gradient-to-r from-transparent via-sun-400/[0.09] to-transparent [animation-delay:4.5s]" />
-        </div>
+    <div data-av-own className="grid min-h-screen overflow-hidden lg:grid-cols-[1.1fr_1fr]">
+      {/* Lado da marca: verde escuro com os arcos da logo sendo desenhados. */}
+      <aside className="relative hidden overflow-hidden bg-brand-900 text-sand-50 lg:flex lg:flex-col lg:justify-between lg:p-14">
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 animate-av-breathe rounded-full bg-brand-500/20 blur-3xl" />
 
-        {/* Sol com raios girando devagar */}
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[30rem] w-[30rem]">
-          <div className="absolute inset-0 animate-gtg-spin-slow rounded-full opacity-60 [background:repeating-conic-gradient(from_0deg,rgba(255,181,0,0.35)_0_3deg,transparent_3deg_24deg)] [mask-image:radial-gradient(circle,transparent_22%,black_24%,transparent_72%)]" />
-          <div className="absolute inset-[34%] animate-gtg-glow rounded-full bg-sun-400 shadow-[0_0_90px_30px_rgba(255,181,0,0.45)]" />
-        </div>
-
-        {/* Partículas de energia subindo */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {sparks.map((s, i) => (
-            <span
-              key={i}
-              className="absolute -bottom-5 animate-gtg-float rounded-full bg-sun-400 will-change-transform"
-              style={{ left: s.left, width: s.size, height: s.size, animationDelay: `${s.delay}s`, animationDuration: `${s.dur}s`, filter: s.blur ? `blur(${s.blur}px)` : undefined }}
+        <svg aria-hidden viewBox="0 0 600 420" className="pointer-events-none absolute inset-x-0 bottom-0 w-full">
+          {arches.map((a) => (
+            <path
+              key={a.r}
+              d={`M${300 - a.r} 420 V${420 - a.r * 0.55} a${a.r} ${a.r} 0 0 1 ${a.r * 2} 0 V420`}
+              pathLength={1}
+              fill="none"
+              stroke={a.r === 95 ? "#93B7A9" : "#FBFAF7"}
+              strokeOpacity={a.o}
+              strokeWidth={a.w}
+              className="animate-av-draw [stroke-dasharray:1]"
+              style={{ animationDelay: `${a.d}s` }}
             />
           ))}
-        </div>
+        </svg>
 
-        <div className="relative z-10 animate-gtg-rise">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-sun-200 ring-1 ring-inset ring-white/15">
-            <span className="h-1.5 w-1.5 animate-gtg-pulse rounded-full bg-sun-400" />
-            Energia solar
+        <div className="relative z-10 animate-av-rise">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs font-medium tracking-wide text-brand-200 ring-1 ring-inset ring-white/10">
+            <span className="h-1.5 w-1.5 animate-av-pulse rounded-full bg-brand-300" />
+            Bauru · SP
           </p>
         </div>
 
-        {/* Painel solar em perspectiva */}
-        <div aria-hidden className="relative z-10 mx-auto my-8 w-full max-w-md animate-gtg-rise [animation-delay:200ms]">
-          <div className="relative [perspective:900px]">
-            <div className="relative grid grid-cols-6 gap-1.5 overflow-hidden rounded-xl border border-white/20 bg-brand-950 p-2 shadow-2xl shadow-black/40 [transform:rotateX(52deg)_rotateZ(-22deg)]">
-              {cells.map((c) => (
-                <span
-                  key={c.i}
-                  className="gtg-tile relative aspect-[4/3] animate-gtg-twinkle rounded-[3px] border border-white/15 bg-gradient-to-br from-brand-500/60 to-brand-800"
-                  style={{ animationDelay: `${c.delay}s` }}
-                >
-                  <span className="gtg-tile-glow pointer-events-none absolute inset-0 rounded-[3px]" />
-                </span>
-              ))}
-              <span className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 animate-gtg-sweep bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 max-w-md space-y-3 animate-gtg-rise [animation-delay:350ms]">
-          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
-            Gestão de obras <span className="text-sun-400">sem complicação.</span>
+        <div className="relative z-10 mb-40 max-w-md space-y-4 animate-av-rise [animation-delay:250ms]">
+          <h2 className="font-serif text-5xl font-light leading-[1.05] tracking-tight">
+            Cada tratamento, <i className="text-brand-300">no seu tempo.</i>
           </h2>
-          <p className="text-sm leading-relaxed text-white/70">
-            Acompanhe o andamento das usinas, as notas fiscais, o financeiro e o estoque da GTG Energia em um só lugar.
+          <p className="text-sm leading-relaxed text-sand-50/65">
+            Agenda, orçamentos e financeiro da Alvéa Odontologia em um só lugar.
           </p>
         </div>
       </aside>
 
       {/* Lado do formulário */}
-      <main className="relative flex flex-col items-center justify-center gap-8 bg-brand-50 p-5 sm:p-8">
-        {/* Brilhos suaves de fundo */}
-        <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 animate-gtg-glow rounded-full bg-sun-200/50 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 animate-gtg-glow rounded-full bg-brand-200/70 blur-3xl [animation-delay:2s]" />
+      <main className="relative flex flex-col items-center justify-center gap-10 bg-sand-50 p-5 sm:p-8">
+        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 animate-av-breathe rounded-full bg-brand-100/80 blur-3xl" />
 
-        <Image
-          src="/logo.png"
-          alt="GTG Energia"
-          width={640}
-          height={364}
-          priority
-          className="relative h-24 w-auto animate-gtg-rise sm:h-28"
-        />
+        <Logo className="relative animate-av-rise scale-125" />
 
-        <div className="relative w-full max-w-sm animate-gtg-rise space-y-6 overflow-hidden rounded-2xl border border-slate-200 bg-white/90 p-7 shadow-xl shadow-brand-900/10 backdrop-blur [animation-delay:120ms] sm:p-8">
-          <span className="absolute inset-x-0 top-0 h-1 origin-left animate-gtg-fill bg-gradient-to-r from-sun-400 via-sun-200 to-sun-400 [animation-delay:400ms]" />
+        <div className="relative w-full max-w-sm animate-av-rise space-y-6 overflow-hidden rounded-3xl border border-sand-200 bg-white/90 p-7 shadow-xl shadow-brand-900/5 backdrop-blur [animation-delay:120ms] sm:p-8">
+          <span className="absolute inset-x-0 top-0 h-0.5 origin-left animate-av-fill bg-gradient-to-r from-brand-300 via-brand-500 to-brand-300 [animation-delay:400ms]" />
           <header className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight text-brand-900">Gestão de Obras</h1>
-            <p className="text-sm text-slate-500">Entre com seu e-mail e senha</p>
+            <h1 className="font-serif text-2xl font-light tracking-tight text-ink-900">Acesse o sistema</h1>
+            <p className="text-sm text-ink-500">Entre com seu e-mail e senha</p>
           </header>
           <LoginForm />
         </div>
 
-        <p className="relative animate-gtg-text text-xs text-slate-400">© GTG Energia</p>
+        <p className="relative animate-av-text text-xs text-ink-400">© Alvéa Odontologia</p>
       </main>
     </div>
   );

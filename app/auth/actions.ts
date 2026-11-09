@@ -19,7 +19,7 @@ export async function login(
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     const ok = await verifyPassword(password, user?.passwordHash);
-    if (user && ok) userId = user.id;
+    if (user && ok && user.active) userId = user.id;
   } catch (e) {
     console.error(e);
     return { error: "Não foi possível entrar agora. Tente novamente.", email };

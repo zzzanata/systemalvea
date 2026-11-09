@@ -6,7 +6,7 @@ function Svg({ className = "h-5 w-5", children }: IconProps & { children: React.
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -119,5 +119,50 @@ export const IdCardIcon = (p: IconProps) => (
     <circle cx="9" cy="11" r="2" />
     <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2" />
     <path d="M15 10h3M15 13h3" />
+  </Svg>
+);
+
+export const CalendarIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M16 3v4M8 3v4M3 10h18" />
+  </Svg>
+);
+
+export const ToothIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 3c-2.5 0-4 2-4 4.5 0 2 1 3.5 1.5 5.5.6 2.6.8 8 2.7 8 1.6 0 1.6-4.5 2.3-6 .4-.9 1-1.3 2.5-1.3s2.1.4 2.5 1.3c.7 1.5.7 6 2.3 6 1.9 0 2.1-5.4 2.7-8 .5-2 1.5-3.5 1.5-5.5C21 5 19.5 3 17 3c-2 0-3 1-5 1S9 3 7 3Z" />
+  </Svg>
+);
+
+export const ClipboardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="4" width="14" height="17" rx="2" />
+    <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" />
+  </Svg>
+);
+
+export const WalletIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1V7Z" />
+    <path d="M4 7V6a2 2 0 0 1 2-2h10v3" />
+    <circle cx="16" cy="13.5" r="1.2" />
+  </Svg>
+);
+
+export const HistoryIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v4h4" />
+    <path d="M12 8v4l3 2" />
+  </Svg>
+);
+
+export const ListIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <circle cx="4.5" cy="6" r="1" />
+    <circle cx="4.5" cy="12" r="1" />
+    <circle cx="4.5" cy="18" r="1" />
   </Svg>
 );
